@@ -262,21 +262,29 @@ void ball_task(void *pvParameters)
 	{
 
 		uint8_t next[2] = {pos[0],pos[1]};
-		calc_next( &pos, &next, &direction);
+		uint8_t is_bounced = 1;
+
+		while (is_bounced != 0)
+		{	
+			is_bounced = 0;
+			calc_next( &pos, &next, &direction);
+			
+			if (next[0] > 12){
+				bounce(&direction, 1);
+			}
+			else if ( next[1] > 9){
+				bounce(&direction, 0);
+			}
+			else if (next[0] == 0 && (next[1] == player_position || next[1] == (player_position+1))){
+				bounce(&direction, 1);
+			}
+			else{
+				move_ball(pos, next);
+				is_bounced = 0;
+			}
+		}
 		
-		if (next[0] > 12){
-			bounce(&direction, 1);
-		}
-		else if ( next[1] > 9){
-			bounce(&direction, 0);
-		}
-		else if (next[0] == 0 && (next[1] == player_position || next[1] == (player_position+1))){
-			bounce(&direction, 1);
-		}
-		else{
-			move_ball(pos, next);
-		}
-		vTaskDelay(60);
+		vTaskDelay(100);
 	}
 	
 }
