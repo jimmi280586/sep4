@@ -128,6 +128,7 @@ void game_task(void *pvParameters)
 	
 }
 
+/*
 void bounce(uint8_t *direction){
 	uint8_t r = rand()%3;
 	
@@ -136,10 +137,59 @@ void bounce(uint8_t *direction){
 	r %= 8;
 	*direction = r;
 }
+*/
+
+void bounce(uint8_t *direction, uint8_t side){
+
+	if ( (*(direction)%2)==0){
+		uint8_t r = rand()%3;
+		r += 3;
+		r += *direction;
+		r %= 8;
+		*direction = r;
+	}
+	else{
+		if (side == 0){
+			switch (*direction){
+				case 1:
+				*direction = 3;
+				break;
+				case 3:
+				*direction = 1;
+				break;
+				case 5:
+				*direction = 7;
+				break;
+				case 7:
+				*direction = 5;
+				break;
+			}
+		}
+		else{
+			switch (*direction){
+				case 1:
+				*direction = 7;
+				break;
+				case 3:
+				*direction = 5;
+				break;
+				case 5:
+				*direction = 3;
+				break;
+				case 7:
+				*direction = 1;
+				break;
+			}
+		}
+	}
+	
+	
+}
 
 void move_ball(uint8_t *current, uint8_t *next){
 	uint16_t mask = 1<< current[1];
 	mask = ~mask;
+
 	if (current[0] == 0){
 		xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
 		col_value[current[0]] &= mask;
@@ -208,18 +258,20 @@ void ball_task(void *pvParameters)
 
 	uint8_t pos[2] = {7, 5};
 	uint8_t direction = 0;
-	//col_value[7] = 1<<5;
 	while(1)
 	{
 
 		uint8_t next[2] = {pos[0],pos[1]};
 		calc_next( &pos, &next, &direction);
 		
-		if (next[0] > 12 || next[1] > 9){
-			bounce(&direction);
+		if (next[0] > 12){
+			bounce(&direction, 1);
+		}
+		else if ( next[1] > 9){
+			bounce(&direction, 0);
 		}
 		else if (next[0] == 0 && (next[1] == player_position || next[1] == (player_position+1))){
-			bounce(&direction);
+			bounce(&direction, 1);
 		}
 		else{
 			move_ball(pos, next);
