@@ -124,25 +124,7 @@ void game_task(void *pvParameters)
 		}
 		//xSemaphoreGive(_player_position_mutex);
 		vTaskDelay(50);
-	}
-	
-	/*
-	while(1)
-	{
-		if (!(PINC & (1<<6))){
-			if ( col_value[0] > 3){
-				col_value[0] >>= 1;
-			}
-			
-		}
-		if (!(PINC & (1<<0))){
-			if ( col_value[0] < 768){
-				col_value[0] <<= 1;
-			}
-			
-		}
-		*/
-		
+	}	
 	
 }
 
@@ -184,9 +166,7 @@ void move_ball(uint8_t *current, uint8_t *next){
 	
 }
 
-uint8_t* calc_next(uint8_t current[2], uint8_t *direction){
-	uint8_t next[2] = {current[0], current[1]};
-	//*next = current;
+void calc_next(uint8_t *current, uint8_t *next, uint8_t *direction){
 	
 	switch (*direction)
 	{
@@ -220,7 +200,6 @@ uint8_t* calc_next(uint8_t current[2], uint8_t *direction){
 		break;
 	}
 	
-	return next;
 }
 
 void ball_task(void *pvParameters)
@@ -232,44 +211,9 @@ void ball_task(void *pvParameters)
 	//col_value[7] = 1<<5;
 	while(1)
 	{
-	/*
-		uint8_t *next;
-		next = (uint8_t *)malloc(sizeof(uint8_t)*2);
-		next =  calc_next(pos, &direction);
-		*/
 
 		uint8_t next[2] = {pos[0],pos[1]};
-		switch (direction)
-		{
-			case 0:
-			--next[1];
-			break;
-			case 1:
-			++next[0];
-			--next[1];
-			break;
-			case 2:
-			++next[0];
-			break;
-			case 3:
-			++next[0];
-			++next[1];
-			break;
-			case 4:
-			++next[1];
-			break;
-			case 5:
-			--next[0];
-			++next[1];
-			break;
-			case 6:
-			--next[0];
-			break;
-			case 7:
-			--next[0];
-			--next[1];
-			break;
-		}
+		calc_next( &pos, &next, &direction);
 		
 		if (next[0] > 12 || next[1] > 9){
 			bounce(&direction);
