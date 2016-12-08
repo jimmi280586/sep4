@@ -22,6 +22,8 @@ main.d main.o: .././main.c \
  ../src/FreeRTOS/Source/include/list.h \
  ../src/FreeRTOS/Source/include/timers.h \
  ../src/FreeRTOS/Source/include/task.h \
+ ../src/FreeRTOS/Source/include/queue.h \
+ ../src/FreeRTOS/Source/include/semphr.h \
  ../src/FreeRTOS/Source/include/queue.h .././src/board/board.h
 
 c:\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\sfr_defs.h:
@@ -69,6 +71,10 @@ c:\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\lib\gcc\avr\4.9.2\include\
 ../src/FreeRTOS/Source/include/timers.h:
 
 ../src/FreeRTOS/Source/include/task.h:
+
+../src/FreeRTOS/Source/include/queue.h:
+
+../src/FreeRTOS/Source/include/semphr.h:
 
 ../src/FreeRTOS/Source/include/queue.h:
 

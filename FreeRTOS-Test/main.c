@@ -12,18 +12,23 @@
 #include <task.h>
 #include <timers.h>
 #include <queue.h>
+#include <semphr.h>
 
 #include "src/board/board.h"
 
 #define task1_prio (tskIDLE_PRIORITY+4)
 #define task2_prio (tskIDLE_PRIORITY+3)
-#define task2_prio (tskIDLE_PRIORITY+2)
+#define task3_prio (tskIDLE_PRIORITY+2)
 
 static const uint8_t _COM_RX_QUEUE_LENGTH = 30;
 static QueueHandle_t _x_com_received_chars_queue = NULL;
-uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48};
+static SemaphoreHandle_t _col_0_mutex = NULL;
+static SemaphoreHandle_t _player_position_mutex = NULL;
+
+static player_position = 4;
+static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //display
 //uint16_t col_value[14] = {1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023};
-uint8_t col_index = 0;
+static col_index = 0;
 
 //-----------------------------------------
 void startup_task(void *pvParameters)
@@ -72,7 +77,7 @@ void echo_task(void *pvParameters)
 				if (data == 0x41){
 					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
 				}
-				com_send_bytes(&(data), 1);
+				com_send_bytes(&(data), 1);  //com_send_bytes
 				if (data == 0x62){
 					col_value[0] >>= 1;
 				}
@@ -84,13 +89,44 @@ void echo_task(void *pvParameters)
 	
 }
 
+void move_player(uint8_t *position, uint8_t direction){
+	uint16_t mask = 5;
+	if (direction == 0){
+		mask <<= *position;
+	}
+	else{
+		mask <<= *position-1;
+	}
+	
+	xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
+	col_value[0] ^= mask;
+	xSemaphoreGive(_col_0_mutex);
+}
+
 void game_task(void *pvParameters)
 {
 	(void) pvParameters;
 
+	while (1)
+	{
+		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
+		if (!(PINC & (1<<6)) && player_position > 0){
+			xSemaphoreTake(_player_position_mutex, (TickType_t) 10);
+			--player_position;
+			xSemaphoreGive(_player_position_mutex);
+			move_player(&player_position, 0);
+		}
+		else if (!(PINC & (1<<0)) && player_position < 8){
+			xSemaphoreTake(_player_position_mutex, (TickType_t) 10);
+			++player_position;
+			xSemaphoreGive(_player_position_mutex);
+			move_player(&player_position, 1);
+		}
+		//xSemaphoreGive(_player_position_mutex);
+		vTaskDelay(50);
+	}
 	
-	
-	
+	/*
 	while(1)
 	{
 		if (!(PINC & (1<<6))){
@@ -105,9 +141,86 @@ void game_task(void *pvParameters)
 			}
 			
 		}
-		vTaskDelay(60);
+		*/
+		
+	
+}
+
+void bounce(uint8_t *direction){
+	uint8_t r = rand()%3;
+	
+	r += 3;
+	r += *direction;
+	r %= 8;
+	*direction = r;
+}
+
+void move_ball(uint8_t *current, uint8_t *next){
+	uint16_t mask = 1<< current[1];
+	mask = ~mask;
+	if (current[0] == 0){
+		xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
+		col_value[current[0]] &= mask;
+		xSemaphoreGive(_col_0_mutex);
+	}
+	else{
+		col_value[current[0]] &= mask;
+	}
+	//col_value[current[0]] &= mask;
+	
+	current[0] = next[0];
+	current[1] = next[1];
+	
+	mask = 1 << current[1];
+	if (current[0] == 0){
+		xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
+		col_value[current[0]] |= mask;
+		xSemaphoreGive(_col_0_mutex);
+	}
+	else{
+		col_value[current[0]] |= mask;
+	}
+
+	
+}
+
+uint8_t* calc_next(uint8_t current[2], uint8_t *direction){
+	uint8_t next[2] = {current[0], current[1]};
+	//*next = current;
+	
+	switch (*direction)
+	{
+		case 0:
+			--next[1];
+			break;
+		case 1:
+		++next[0];
+		--next[1];
+		break;
+		case 2:
+		++next[0];
+		break;
+		case 3:
+		++next[0];
+		++next[1];
+		break;
+		case 4:
+		++next[1];
+		break;
+		case 5:
+		--next[0];
+		++next[1];
+		break;
+		case 6:
+		--next[0];
+		break;
+		case 7:
+		--next[0];
+		--next[1];
+		break;
 	}
 	
+	return next;
 }
 
 void ball_task(void *pvParameters)
@@ -115,21 +228,57 @@ void ball_task(void *pvParameters)
 	(void) pvParameters;
 
 	uint8_t pos[2] = {7, 5};
-	
-	
+	uint8_t direction = 0;
+	//col_value[7] = 1<<5;
 	while(1)
 	{
-		if (!(PINC & (1<<6))){
-			if ( col_value[0] > 3){
-				col_value[0] >>= 1;
-			}
-			
+	/*
+		uint8_t *next;
+		next = (uint8_t *)malloc(sizeof(uint8_t)*2);
+		next =  calc_next(pos, &direction);
+		*/
+
+		uint8_t next[2] = {pos[0],pos[1]};
+		switch (direction)
+		{
+			case 0:
+			--next[1];
+			break;
+			case 1:
+			++next[0];
+			--next[1];
+			break;
+			case 2:
+			++next[0];
+			break;
+			case 3:
+			++next[0];
+			++next[1];
+			break;
+			case 4:
+			++next[1];
+			break;
+			case 5:
+			--next[0];
+			++next[1];
+			break;
+			case 6:
+			--next[0];
+			break;
+			case 7:
+			--next[0];
+			--next[1];
+			break;
 		}
-		if (!(PINC & (1<<0))){
-			if ( col_value[0] < 768){
-				col_value[0] <<= 1;
-			}
-			
+		
+		if (next[0] > 12 || next[1] > 9){
+			bounce(&direction);
+		}
+		else if (next[0] == 0 && (next[1] == player_position || next[1] == (player_position+1))){
+			bounce(&direction);
+		}
+		else{
+			move_ball(pos, next);
 		}
 		vTaskDelay(60);
 	}
@@ -184,14 +333,17 @@ int main(void)
 	PORTD &= ~_BV(PORTD6);
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
+	_col_0_mutex = xSemaphoreCreateMutex();
+	_player_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
 
 	
 	
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
+	//xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
 	xTaskCreate(game_task,(const char *)"game", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
+	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
 	
 	// Start the display handler timer
 	init_display_timer(handle_display);
