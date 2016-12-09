@@ -54,6 +54,66 @@ void startup_task(void *pvParameters)
 		// Maybe something usefiúll could be done her :)
 	}
 }
+
+void serial_task(void *pvParameters){
+
+	(void) pvParameters;
+	
+	TickType_t lastWakeTime;
+	
+	uint8_t state = 0;
+	uint8_t data = 0;
+	const uint8_t flag = 0x00;
+	const uint8_t esc = 0xff;
+	lastWakeTime = xTaskGetTickCount();
+	while (1)
+	{
+		while(xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0) ){
+			
+			switch (state){
+				case 0:
+					if (data == flag){
+						state = 1;
+					}
+					break;
+				case 1:
+					if (data == flag){
+						//return payload
+						state = 0;
+					}
+					else if (data == esc){
+						state = 2;
+					}
+					else{
+						//save to payload
+					}
+					break;
+				case 2:
+					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0);
+					//save to payload
+					break;
+				default:
+					state = 0;
+					break;
+			}
+			/*
+			if (data == 0x61)
+			{
+				xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0);
+				if (data == 0x41){
+					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0);
+				}
+				com_send_bytes(&(data), 1);  //com_send_bytes
+				if (data == 0x62){
+					col_value[0] >>= 1;
+				}
+			}*/
+		}
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 20);
+	}
+
+}
+
 void echo_task(void *pvParameters)
 {
 	(void) pvParameters;
@@ -70,19 +130,13 @@ void echo_task(void *pvParameters)
 			if (data == 0x61)
 			{
 			
-			xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
-			
-			while(data != 0x61)
-			{
+				xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
 				if (data == 0x41){
 					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
 				}
-				com_send_bytes(&(data), 1);  //com_send_bytes
 				if (data == 0x62){
 					col_value[0] >>= 1;
 				}
-				xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
-			}
 			}
 		}	
 	}
@@ -103,10 +157,11 @@ void move_player(uint8_t *position, uint8_t direction){
 	xSemaphoreGive(_col_0_mutex);
 }
 
-void game_task(void *pvParameters)
+void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
-
+	TickType_t lastWakeTime;
+	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
 		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
@@ -123,7 +178,7 @@ void game_task(void *pvParameters)
 			move_player(&player_position, 1);
 		}
 		//xSemaphoreGive(_player_position_mutex);
-		vTaskDelay(50);
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
 	}	
 	
 }
@@ -255,9 +310,10 @@ void calc_next(uint8_t *current, uint8_t *next, uint8_t *direction){
 void ball_task(void *pvParameters)
 {
 	(void) pvParameters;
-
+	TickType_t lastWakeTime;
 	uint8_t pos[2] = {7, 5};
 	uint8_t direction = 0;
+	lastWakeTime = xTaskGetTickCount();
 	while(1)
 	{
 
@@ -284,7 +340,7 @@ void ball_task(void *pvParameters)
 			}
 		}
 		
-		vTaskDelay(100);
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
 	}
 	
 }
@@ -345,9 +401,9 @@ int main(void)
 	
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	//xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
-	xTaskCreate(game_task,(const char *)"game", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
-	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
+	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
+	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
+	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
 	
 	// Start the display handler timer
 	init_display_timer(handle_display);
