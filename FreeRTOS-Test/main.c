@@ -30,6 +30,18 @@ static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //
 //uint16_t col_value[14] = {1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023};
 static col_index = 0;
 
+typedef struct {
+	uint8_t data;
+	struct msg_byte *next;
+}msg_byte_t;
+
+typedef struct msg{
+	uint8_t *data;
+	uint8_t size;
+}msg_t;
+
+static msg_t *frame = NULL;
+
 //-----------------------------------------
 void startup_task(void *pvParameters)
 {
@@ -63,8 +75,12 @@ void serial_task(void *pvParameters){
 	
 	uint8_t state = 0;
 	uint8_t data = 0;
-	const uint8_t flag = 0x00;
+	const uint8_t flag = 0x61;
 	const uint8_t esc = 0xff;
+
+	msg_byte_t *received_byte = NULL;
+	msg_byte_t *head;
+	uint8_t count = 0;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
@@ -78,14 +94,38 @@ void serial_task(void *pvParameters){
 					break;
 				case 1:
 					if (data == flag){
-						//return payload
+						msg_t *received_msg;
+						received_msg = (sizeof(msg_t));
+						uint8_t bytes[count];
+						
+
+						for (uint8_t i; i < count; ++i)
+						{
+							bytes[i] = head->data;
+							head = head->next;
+						}
+						received_msg->data = &bytes;
+						count = 0;
+						frame = &received_msg;
+
 						state = 0;
 					}
 					else if (data == esc){
 						state = 2;
 					}
 					else{
-						//save to payload
+						msg_byte_t *incoming;
+						incoming = malloc(sizeof(msg_byte_t));
+						incoming->data =data;
+						if (count != 0){
+							received_byte->next = &incoming;
+						}
+						else
+						{
+							head = &incoming;
+						}
+						++count;
+						received_byte = &incoming;
 					}
 					break;
 				case 2:
@@ -119,26 +159,18 @@ void echo_task(void *pvParameters)
 	(void) pvParameters;
 
 	uint8_t data;
-	
+	TickType_t lastWakeTime;
+	lastWakeTime = xTaskGetTickCount();
 	while(1)
 	{
-		if(_x_com_received_chars_queue != 0)
+		if (frame != NULL)
 		{
-			xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
-			//com_send_bytes(&(data), 1);
-
-			if (data == 0x61)
-			{
-			
-				xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
-				if (data == 0x41){
-					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 10);
-				}
-				if (data == 0x62){
-					col_value[0] >>= 1;
-				}
-			}
-		}	
+		com_send_bytes((uint8_t *) "hello", 5);
+		com_send_bytes(frame->data,frame->size);
+		frame = NULL;
+		}
+		
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
 	}
 	
 }
@@ -402,8 +434,10 @@ int main(void)
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
-	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
 	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
+	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
+	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	
 	
 	// Start the display handler timer
 	init_display_timer(handle_display);
