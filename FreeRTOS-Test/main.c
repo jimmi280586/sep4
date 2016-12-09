@@ -28,6 +28,8 @@ static SemaphoreHandle_t _player_position_mutex = NULL;
 static player_position = 4;
 static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //display
 //uint16_t col_value[14] = {1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023};
+
+//uint16_t col_value[14] = {508, 288, 192, 16, 40, 16, 0, 60, 32, 28, 0, 18, 42, 60};
 static col_index = 0;
 
 //-----------------------------------------
@@ -48,6 +50,8 @@ void startup_task(void *pvParameters)
 	// Lets send a start message to the console
 	com_send_bytes((uint8_t *)"Then we Start!\n", 15);
 	com_send_bytes((uint8_t *) 0xff, 1);
+	
+	
 	
 	while(1)
 	{
@@ -160,6 +164,7 @@ void move_player(uint8_t *position, uint8_t direction){
 void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
+	
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
@@ -310,6 +315,36 @@ void calc_next(uint8_t *current, uint8_t *next, uint8_t *direction){
 void ball_task(void *pvParameters)
 {
 	(void) pvParameters;
+		//"Pong" 
+		col_value[13] = 240;
+		col_value[12] = 336;
+		col_value[11] = 288;
+		col_value[10] = 0;
+		col_value[9] = 224;
+		col_value[8] = 16;
+		col_value[7] = 240;
+		col_value[6] = 0;
+		col_value[5] = 96;
+		col_value[4] = 144;
+		col_value[3] = 96;
+		col_value[2] = 12;
+		col_value[1] = 18;
+		col_value[0] = 254;
+		vTaskDelay(2000);
+		col_value[13] = 48;
+		col_value[12] = 0;
+		col_value[11] = 0;
+		col_value[10] = 0;
+		col_value[9] = 0;
+		col_value[8] = 0;
+		col_value[7] = 0;
+		col_value[6] = 0;
+		col_value[5] = 0;
+		col_value[4] = 0;
+		col_value[3] = 0;
+		col_value[2] = 0;
+		col_value[1] = 0;
+		col_value[0] = 48;	
 	TickType_t lastWakeTime;
 	uint8_t pos[2] = {7, 5};
 	uint8_t direction = 0;
@@ -396,7 +431,7 @@ int main(void)
 	_col_0_mutex = xSemaphoreCreateMutex();
 	_player_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
-
+	
 	
 	
 	//Create task to blink gpio
