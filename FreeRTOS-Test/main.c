@@ -34,17 +34,12 @@ static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //
 //uint16_t col_value[14] = {508, 288, 192, 16, 40, 16, 0, 60, 32, 28, 0, 18, 42, 60};
 static col_index = 0;
 
-typedef struct msg_byte_t{
-	uint8_t data;
-	struct msg_byte_t *next;
-}msg_byte_t;
-
-typedef struct msg{
+typedef struct frame_t{
 	uint8_t data[8];
 	uint8_t size;
-}msg_t;
+}frame_t;
 
-static msg_t *frame = NULL;
+static QueueHandle_t _frames_received = NULL;
 
 //-----------------------------------------
 void startup_task(void *pvParameters)
@@ -84,7 +79,7 @@ void serial_task(void *pvParameters){
 	const uint8_t flag = 0x61;
 	const uint8_t esc = 0xff;
 
-	msg_byte_t *last_byte = NULL;
+	frame_t buff;
 	uint8_t count = 0;
 
 	lastWakeTime = xTaskGetTickCount();
@@ -100,20 +95,8 @@ void serial_task(void *pvParameters){
 					break;
 				case 1:
 					if (data == flag){
-
-						
-						//received_msg.data = (uint8_t *) malloc(sizeof(uint8_t)*count);
-						//uint8_t bytes[count];
-						msg_t received_msg;
-						received_msg.size = count;
-						for (uint8_t i = count; i > 0; --i)
-						{
-							received_msg.data[i-1] = last_byte->data;
-							last_byte = last_byte->next;
-						}
-
-						frame = &received_msg;
-						
+						buff.size = count;
+						xQueueSend(_frames_received, &buff, (TickType_t) 1);
 						count = 0;
 						state = 0;
 
@@ -122,8 +105,7 @@ void serial_task(void *pvParameters){
 						state = 2;
 					}
 					else{
-						msg_byte_t incoming = {data, last_byte};
-						last_byte = &incoming;
+						buff.data[count] = data;
 						++count;
 					}
 					break;
@@ -157,16 +139,15 @@ void echo_task(void *pvParameters)
 {
 	(void) pvParameters;
 
-	uint8_t data;
+	frame_t buff;
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while(1)
 	{
-		if (frame != NULL)
+		if (xQueueReceive(_frames_received, &buff, (TickType_t) 1))
 		{
 		//com_send_bytes((uint8_t *) "hello", 5);
-		com_send_bytes(frame->data,frame->size);
-		frame = NULL;
+		com_send_bytes(buff.data,buff.size);
 		}
 		
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
@@ -233,7 +214,7 @@ void external_player_task(void *pvParameters)
 {
 	(void) pvParameters;
 	uint8_t position = 4;
-
+	frame_t *frame;
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
@@ -503,6 +484,8 @@ int main(void)
 	PORTD &= ~_BV(PORTD6);
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
+	_frames_received = xQueueCreate( 1, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
+
 	_col_0_mutex = xSemaphoreCreateMutex();
 	_col_13_mutex = xSemaphoreCreateMutex();
 	_player_position_mutex = xSemaphoreCreateMutex();
@@ -516,8 +499,8 @@ int main(void)
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
 	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
 	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
-	xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	//xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	
 	
 	// Start the display handler timer
