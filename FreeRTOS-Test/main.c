@@ -28,6 +28,7 @@ static SemaphoreHandle_t _player_position_mutex = NULL;
 static SemaphoreHandle_t _ball_position_mutex = NULL;
 
 static player_position = 4;
+static ball_position[2] = {7, 5};
 static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //display
 //uint16_t col_value[14] = {1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023};
 
@@ -40,6 +41,7 @@ typedef struct frame_t{
 }frame_t;
 
 static QueueHandle_t _frames_received = NULL;
+static SemaphoreHandle_t _isBallAtLeft = NULL;
 
 //-----------------------------------------
 void startup_task(void *pvParameters)
@@ -172,15 +174,24 @@ void move_player(uint8_t *position, uint8_t direction){
 void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
-	
+	uint8_t ball[2];
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
+		xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
+		ball[0] = ball_position[0];
+		ball[1] = ball_position[1];
+		xSemaphoreGive(_ball_position_mutex);
 		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
 		if (!(PINC & (1<<6)) && player_position > 0){
 			xSemaphoreTake(_player_position_mutex, (TickType_t) 10);
-			--player_position;
+			if (ball[0] == 0 && (player_position-1) == ball[1]){
+				//maybe bounce?
+			}
+			else{
+				--player_position;
+			}
 			xSemaphoreGive(_player_position_mutex);
 			move_player(&player_position, 0);
 		}
@@ -214,25 +225,24 @@ void external_player_task(void *pvParameters)
 {
 	(void) pvParameters;
 	uint8_t position = 4;
-	frame_t *frame;
+	frame_t buff;
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
 		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
-		if (frame == NULL)
+		if (xQueueReceive(_frames_received, &buff, (TickType_t) 1))
 		{
+			if (buff.data[0] == 'w' && position > 0){
+				--position;
+				move_player2(&position, 0);
+			}
+			else if (buff.data[0] == 's' && position < 8){
+				++position;
+				move_player2(&position, 1);
+			}
 		}
-		else if (frame->data[0] == 'w'){
-			--position;
-			move_player2(&position, 0);
-		}
-		else if (frame->data[0] == 's'){
-			++position;
-			move_player2(&position, 1);
-		}
-		frame = NULL;
-		//xSemaphoreGive(_player_position_mutex);
+
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
 	}
 	
@@ -312,6 +322,11 @@ void move_ball(uint8_t *current, uint8_t *next){
 	
 	current[0] = next[0];
 	current[1] = next[1];
+
+	xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
+	ball_position[0] =current[0];
+	ball_position[1] = current[1];
+	xSemaphoreGive(_ball_position_mutex);
 	
 	mask = 1 << current[1];
 	if (current[0] == 0){
@@ -402,11 +417,16 @@ void ball_task(void *pvParameters)
 		col_value[1] = 0;
 		col_value[0] = 48;	
 	TickType_t lastWakeTime;
-	uint8_t pos[2] = {7, 5};
+	uint8_t pos[2];
 	uint8_t direction = 0;
 	lastWakeTime = xTaskGetTickCount();
 	while(1)
 	{
+
+		xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
+		pos[0] = ball_position[0];
+		pos[1] = ball_position[1];
+		xSemaphoreGive(_ball_position_mutex);
 
 		uint8_t next[2] = {pos[0],pos[1]};
 		uint8_t is_bounced = 1;
@@ -416,7 +436,7 @@ void ball_task(void *pvParameters)
 			is_bounced = 0;
 			calc_next( &pos, &next, &direction);
 			
-			if (next[0] > 12){
+			if (next[0] > 13){
 				bounce(&direction, 1);
 			}
 			else if ( next[1] > 9){
@@ -485,6 +505,7 @@ int main(void)
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
 	_frames_received = xQueueCreate( 1, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
+	_isBallAtLeft = xSemaphoreCreateBinary();
 
 	_col_0_mutex = xSemaphoreCreateMutex();
 	_col_13_mutex = xSemaphoreCreateMutex();
@@ -499,8 +520,8 @@ int main(void)
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
 	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
 	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
-	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	//xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	
 	
 	// Start the display handler timer
