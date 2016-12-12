@@ -30,9 +30,9 @@ static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //
 //uint16_t col_value[14] = {1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023};
 static col_index = 0;
 
-typedef struct {
+typedef struct msg_byte_t{
 	uint8_t data;
-	struct msg_byte *next;
+	struct msg_byte_t *next;
 }msg_byte_t;
 
 typedef struct msg{
@@ -78,9 +78,14 @@ void serial_task(void *pvParameters){
 	const uint8_t flag = 0x61;
 	const uint8_t esc = 0xff;
 
-	msg_byte_t *received_byte = NULL;
-	msg_byte_t *head;
+	//msg_byte_t *received_byte = NULL;
+	//msg_byte_t *head = (uint8_t*)malloc(sizeof(uint8_t));
+	//head->data = malloc(sizeof(uint8_t));
+	msg_byte_t *last_byte = NULL; // = (msg_byte_t*)malloc(sizeof(msg_byte_t));
+	//last_byte->data = 0;
+	//last_byte->next = NULL;
 	uint8_t count = 0;
+
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
@@ -94,38 +99,30 @@ void serial_task(void *pvParameters){
 					break;
 				case 1:
 					if (data == flag){
-						msg_t *received_msg;
-						received_msg = (sizeof(msg_t));
-						uint8_t bytes[count];
-						
 
-						for (uint8_t i; i < count; ++i)
+						msg_t received_msg;
+						//received_msg.data = (uint8_t *) malloc(sizeof(uint8_t)*count);
+						received_msg.size = count;
+
+						for (; count > 0; --count)
 						{
-							bytes[i] = head->data;
-							head = head->next;
+							received_msg.data[count-1] = last_byte->data;
+							last_byte = last_byte->next;
 						}
-						received_msg->data = &bytes;
-						count = 0;
-						frame = &received_msg;
 
+						frame = &received_msg;
+						
+						count = 0;
 						state = 0;
+
 					}
 					else if (data == esc){
 						state = 2;
 					}
 					else{
-						msg_byte_t *incoming;
-						incoming = malloc(sizeof(msg_byte_t));
-						incoming->data =data;
-						if (count != 0){
-							received_byte->next = &incoming;
-						}
-						else
-						{
-							head = &incoming;
-						}
+						msg_byte_t incoming = {data, last_byte};
+						last_byte = &incoming;
 						++count;
-						received_byte = &incoming;
 					}
 					break;
 				case 2:
@@ -165,7 +162,7 @@ void echo_task(void *pvParameters)
 	{
 		if (frame != NULL)
 		{
-		com_send_bytes((uint8_t *) "hello", 5);
+		//com_send_bytes((uint8_t *) "hello", 5);
 		com_send_bytes(frame->data,frame->size);
 		frame = NULL;
 		}
