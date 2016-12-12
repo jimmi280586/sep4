@@ -16,6 +16,7 @@
 
 #include "src/board/board.h"
 #include "protocol.h"
+#include "game.h"
 
 #define task1_prio (tskIDLE_PRIORITY+4)
 #define task2_prio (tskIDLE_PRIORITY+3)
@@ -205,7 +206,7 @@ void bounce(uint8_t *direction){
 	*direction = r;
 }
 */
-
+/*
 void bounce(uint8_t *direction, uint8_t side){
 
 	if ( (*(direction)%2)==0){
@@ -253,6 +254,7 @@ void bounce(uint8_t *direction, uint8_t side){
 	
 }
 
+
 void move_ball(uint8_t *current, uint8_t *next){
 	uint16_t mask = 1<< current[1];
 	mask = ~mask;
@@ -299,8 +301,8 @@ void calc_next(uint8_t *current, uint8_t *next, uint8_t *direction){
 	switch (*direction)
 	{
 		case 0:
-			--next[1];
-			break;
+		--next[1];
+		break;
 		case 1:
 		++next[0];
 		--next[1];
@@ -333,36 +335,6 @@ void calc_next(uint8_t *current, uint8_t *next, uint8_t *direction){
 void ball_task(void *pvParameters)
 {
 	(void) pvParameters;
-		//"Pong" 
-		col_value[13] = 240;
-		col_value[12] = 336;
-		col_value[11] = 288;
-		col_value[10] = 0;
-		col_value[9] = 224;
-		col_value[8] = 16;
-		col_value[7] = 240;
-		col_value[6] = 0;
-		col_value[5] = 96;
-		col_value[4] = 144;
-		col_value[3] = 96;
-		col_value[2] = 12;
-		col_value[1] = 18;
-		col_value[0] = 254;
-		vTaskDelay(2000);
-		col_value[13] = 48;
-		col_value[12] = 0;
-		col_value[11] = 0;
-		col_value[10] = 0;
-		col_value[9] = 0;
-		col_value[8] = 0;
-		col_value[7] = 0;
-		col_value[6] = 0;
-		col_value[5] = 0;
-		col_value[4] = 0;
-		col_value[3] = 0;
-		col_value[2] = 0;
-		col_value[1] = 0;
-		col_value[0] = 48;	
 	TickType_t lastWakeTime;
 	uint8_t pos[2];
 	uint8_t direction = 0;
@@ -402,7 +374,21 @@ void ball_task(void *pvParameters)
 	}
 	
 }
+*/
 
+void ball_task(void *pvParameters)
+{
+	(void) pvParameters;
+	TickType_t lastWakeTime;
+	game_stateFunc state = init_game(&col_value);
+
+	lastWakeTime = xTaskGetTickCount();
+
+	while(1){
+		state = (prot_StateFunc)(*state)();
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
+	}
+}
 
 //-----------------------------------------
 void handle_display(void)
@@ -452,12 +438,12 @@ int main(void)
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
 	_frames_received = xQueueCreate( 2, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
-	_isBallAtLeft = xSemaphoreCreateBinary();
+	//_isBallAtLeft = xSemaphoreCreateBinary();
 
-	_col_0_mutex = xSemaphoreCreateMutex();
-	_col_13_mutex = xSemaphoreCreateMutex();
-	_player_position_mutex = xSemaphoreCreateMutex();
-	_ball_position_mutex = xSemaphoreCreateMutex();
+	//_col_0_mutex = xSemaphoreCreateMutex();
+	//_col_13_mutex = xSemaphoreCreateMutex();
+	//_player_position_mutex = xSemaphoreCreateMutex();
+	//_ball_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
 	
 	
@@ -465,7 +451,7 @@ int main(void)
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
-	//xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
+	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
 	//xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
 	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);

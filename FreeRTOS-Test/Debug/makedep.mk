@@ -6,6 +6,8 @@ game.c
 
 main.c
 
+player_local.c
+
 protocol.c
 
 src\board\board.c

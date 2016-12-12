@@ -9,14 +9,10 @@
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
-#include <avr/sfr_defs.h>
-#include <avr/io.h>
 // FfreeRTOS Includes
 #include <FreeRTOS.h>
-#include <task.h>
-#include <timers.h>
 #include <queue.h>
-#include <semphr.h>
+
 
 typedef void *(*prot_StateFunc)(uint8_t);
 
