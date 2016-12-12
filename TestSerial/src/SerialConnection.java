@@ -24,7 +24,7 @@ public class SerialConnection {
 
 	// Check settings (on Windows) in Device Manager -> Properties -> Port
 	// Settings if you have any issues.
-	private static final SerialConfig DEFAULT_CONFIG = new SerialConfig(BaudRate.B57600, Parity.NONE, StopBits.ONE,
+	private static final SerialConfig DEFAULT_CONFIG = new SerialConfig(BaudRate.B115200, Parity.NONE, StopBits.ONE,
 			DataBits.D8);
 
 	// region Constructors
@@ -46,12 +46,12 @@ public class SerialConnection {
 	
 	public void write(byte[] bytes) {
 		try {
-			System.out.println(" Writing: " + bytes.length + " bytes to stream: ");
-			System.out.println(" Before writing to output stream");
+			//System.out.println(" Writing: " + bytes.length + " bytes to stream: ");
+			//System.out.println(" Before writing to output stream");
 			serialPort.getOutputStream().write(bytes);
-			System.out.println(" Before flushing");
+			//System.out.println(" Before flushing");
 			serialPort.getOutputStream().flush();
-			System.out.println(" After flushing");
+			//System.out.println(" After flushing");
 		
 		} catch (Exception e) {
 			System.err.println("Failed writing output stream on " + serialPort.getName());
