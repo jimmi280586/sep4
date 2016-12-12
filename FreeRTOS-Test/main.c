@@ -24,6 +24,7 @@ static const uint8_t _COM_RX_QUEUE_LENGTH = 30;
 static QueueHandle_t _x_com_received_chars_queue = NULL;
 static SemaphoreHandle_t _col_0_mutex = NULL;
 static SemaphoreHandle_t _player_position_mutex = NULL;
+static SemaphoreHandle_t _ball_position_mutex = NULL;
 
 static player_position = 4;
 static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //display
@@ -369,7 +370,11 @@ void ball_task(void *pvParameters)
 			}
 		}
 		
+<<<<<<< HEAD
+		vTaskDelay(20);
+=======
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
+>>>>>>> origin/master
 	}
 	
 }
@@ -424,6 +429,7 @@ int main(void)
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
 	_col_0_mutex = xSemaphoreCreateMutex();
 	_player_position_mutex = xSemaphoreCreateMutex();
+	_ball_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
 
 	
