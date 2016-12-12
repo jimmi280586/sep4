@@ -17,6 +17,7 @@
 #include "src/board/board.h"
 #include "protocol.h"
 #include "game.h"
+#include "player_local.h"
 
 #define task1_prio (tskIDLE_PRIORITY+4)
 #define task2_prio (tskIDLE_PRIORITY+3)
@@ -41,6 +42,7 @@ static QueueHandle_t _frames_received = NULL;
 static SemaphoreHandle_t _isBallAtLeft = NULL;
 
 //-----------------------------------------
+/*
 void startup_task(void *pvParameters)
 {
 	// The parameters are not used
@@ -66,6 +68,7 @@ void startup_task(void *pvParameters)
 		// Maybe something usefiúll could be done her :)
 	}
 }
+*/
 
 void serial_task(void *pvParameters){
 
@@ -104,7 +107,7 @@ void echo_task(void *pvParameters)
 	}
 	
 }
-
+/*
 void move_player(uint8_t *position, uint8_t direction){
 	uint16_t mask = 5;
 	if (direction == 0){
@@ -154,7 +157,23 @@ void local_player_task(void *pvParameters)
 	}	
 	
 }
+*/
+/*
+void local_player_task(void *pvParameters)
+{
+	(void) pvParameters;
+	TickType_t lastWakeTime;
+	uint8_t pos;
+	void *(*loop)() = init_p_local(&_player_position_mutex, &pos, &col_value);
 
+	lastWakeTime = xTaskGetTickCount();
+	while(1){
+		loop = (*loop)();
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
+	}
+	
+}
+*/
 void move_player2(uint8_t *position, uint8_t direction){
 	uint16_t mask = 5;
 	if (direction == 0){
@@ -376,7 +395,7 @@ void ball_task(void *pvParameters)
 }
 */
 
-void ball_task(void *pvParameters)
+void game_task(void *pvParameters)
 {
 	(void) pvParameters;
 	TickType_t lastWakeTime;
@@ -385,7 +404,7 @@ void ball_task(void *pvParameters)
 	lastWakeTime = xTaskGetTickCount();
 
 	while(1){
-		state = (prot_StateFunc)(*state)();
+		state = (game_stateFunc)(*state)();
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
 	}
 }
@@ -442,7 +461,7 @@ int main(void)
 
 	//_col_0_mutex = xSemaphoreCreateMutex();
 	//_col_13_mutex = xSemaphoreCreateMutex();
-	//_player_position_mutex = xSemaphoreCreateMutex();
+	_player_position_mutex = xSemaphoreCreateMutex();
 	//_ball_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
 	
@@ -451,7 +470,7 @@ int main(void)
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
-	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
+	xTaskCreate(game_task,(const char *)"game", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
 	//xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
 	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);

@@ -5,11 +5,9 @@
  *  Author: David
  */ 
 
- #include "game.h"
+ #include "player_local.h"
 
- #include <FreeRTOS.h>
- #include <semphr.h>
-
+ //static uint16_t *screen_buffer;
  static uint8_t *p_l_pos;
  static SemaphoreHandle_t *mut;
 
@@ -23,10 +21,11 @@
 	 }
  } 
 
- void *init_p_local(SemaphoreHandle_t *m, uint8_t *p){
+ void *init_p_local(SemaphoreHandle_t *m, uint8_t *p, uint16_t s){
 	
 	p_l_pos = p;
 	mut = m;
+	//screen_buffer = s;
 	return p_local;
  }
 
@@ -52,5 +51,14 @@
 	 }
 	 else{
 	 }
+ }
+
+ void refresh_p_l(){
+	
+	//screen_buffer[0] &= !(11 << *p_l_pos);
+	//screen_buffer[ball_curr_pos[0]] = 0;
+
+	//screen_buffer[0] |= (11 << *p_l_pos);
+	//screen_buffer[ball_curr_pos[0]] = 1023;
  }
 
