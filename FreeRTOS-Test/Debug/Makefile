@@ -51,6 +51,7 @@ SUBDIRS :=  \
 C_SRCS +=  \
 ../game.c \
 ../main.c \
+../player_local.c \
 ../protocol.c \
 ../src/board/board.c \
 ../src/buffer/buffer.c \
@@ -74,6 +75,7 @@ ASM_SRCS +=
 OBJS +=  \
 game.o \
 main.o \
+player_local.o \
 protocol.o \
 src/board/board.o \
 src/buffer/buffer.o \
@@ -90,6 +92,7 @@ src/FreeRTOS/Source/timers.o
 OBJS_AS_ARGS +=  \
 game.o \
 main.o \
+player_local.o \
 protocol.o \
 src/board/board.o \
 src/buffer/buffer.o \
@@ -106,6 +109,7 @@ src/FreeRTOS/Source/timers.o
 C_DEPS +=  \
 game.d \
 main.d \
+player_local.d \
 protocol.d \
 src/board/board.d \
 src/buffer/buffer.d \
@@ -122,6 +126,7 @@ src/FreeRTOS/Source/timers.d
 C_DEPS_AS_ARGS +=  \
 game.d \
 main.d \
+player_local.d \
 protocol.d \
 src/board/board.d \
 src/buffer/buffer.d \
@@ -149,6 +154,8 @@ LINKER_SCRIPT_DEP+=
 
 
 # AVR32/GNU C Compiler
+
+
 
 
 
