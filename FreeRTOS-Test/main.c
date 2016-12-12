@@ -23,6 +23,7 @@
 static const uint8_t _COM_RX_QUEUE_LENGTH = 30;
 static QueueHandle_t _x_com_received_chars_queue = NULL;
 static SemaphoreHandle_t _col_0_mutex = NULL;
+static SemaphoreHandle_t _col_13_mutex = NULL;
 static SemaphoreHandle_t _player_position_mutex = NULL;
 static SemaphoreHandle_t _ball_position_mutex = NULL;
 
@@ -39,7 +40,7 @@ typedef struct msg_byte_t{
 }msg_byte_t;
 
 typedef struct msg{
-	uint8_t *data;
+	uint8_t data[8];
 	uint8_t size;
 }msg_t;
 
@@ -83,12 +84,7 @@ void serial_task(void *pvParameters){
 	const uint8_t flag = 0x61;
 	const uint8_t esc = 0xff;
 
-	//msg_byte_t *received_byte = NULL;
-	//msg_byte_t *head = (uint8_t*)malloc(sizeof(uint8_t));
-	//head->data = malloc(sizeof(uint8_t));
-	msg_byte_t *last_byte = NULL; // = (msg_byte_t*)malloc(sizeof(msg_byte_t));
-	//last_byte->data = 0;
-	//last_byte->next = NULL;
+	msg_byte_t *last_byte = NULL;
 	uint8_t count = 0;
 
 	lastWakeTime = xTaskGetTickCount();
@@ -105,13 +101,14 @@ void serial_task(void *pvParameters){
 				case 1:
 					if (data == flag){
 
-						msg_t received_msg;
+						
 						//received_msg.data = (uint8_t *) malloc(sizeof(uint8_t)*count);
+						//uint8_t bytes[count];
+						msg_t received_msg;
 						received_msg.size = count;
-
-						for (; count > 0; --count)
+						for (uint8_t i = count; i > 0; --i)
 						{
-							received_msg.data[count-1] = last_byte->data;
+							received_msg.data[i-1] = last_byte->data;
 							last_byte = last_byte->next;
 						}
 
@@ -218,6 +215,48 @@ void local_player_task(void *pvParameters)
 	
 }
 
+void move_player2(uint8_t *position, uint8_t direction){
+	uint16_t mask = 5;
+	if (direction == 0){
+		mask <<= *position;
+	}
+	else{
+		mask <<= *position-1;
+	}
+	
+	xSemaphoreTake(_col_13_mutex, (TickType_t) 1);
+	col_value[13] ^= mask;
+	xSemaphoreGive(_col_13_mutex);
+}
+
+void external_player_task(void *pvParameters)
+{
+	(void) pvParameters;
+	uint8_t position = 4;
+
+	TickType_t lastWakeTime;
+	lastWakeTime = xTaskGetTickCount();
+	while (1)
+	{
+		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
+		if (frame == NULL)
+		{
+		}
+		else if (frame->data[0] == 'w'){
+			--position;
+			move_player2(&position, 0);
+		}
+		else if (frame->data[0] == 's'){
+			++position;
+			move_player2(&position, 1);
+		}
+		frame = NULL;
+		//xSemaphoreGive(_player_position_mutex);
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
+	}
+	
+}
+
 /*
 void bounce(uint8_t *direction){
 	uint8_t r = rand()%3;
@@ -295,9 +334,15 @@ void move_ball(uint8_t *current, uint8_t *next){
 	
 	mask = 1 << current[1];
 	if (current[0] == 0){
-		xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
+		xSemaphoreTake(_col_0_mutex, (TickType_t) 1);
 		col_value[current[0]] |= mask;
 		xSemaphoreGive(_col_0_mutex);
+	}
+	else if (current[0] == 13)
+	{
+		xSemaphoreTake(_col_13_mutex, (TickType_t) 1);
+		col_value[current[0]] |= mask;
+		xSemaphoreGive(_col_13_mutex);
 	}
 	else{
 		col_value[current[0]] |= mask;
@@ -405,11 +450,7 @@ void ball_task(void *pvParameters)
 			}
 		}
 		
-<<<<<<< HEAD
-		vTaskDelay(20);
-=======
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
->>>>>>> origin/master
 	}
 	
 }
@@ -463,6 +504,7 @@ int main(void)
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
 	_col_0_mutex = xSemaphoreCreateMutex();
+	_col_13_mutex = xSemaphoreCreateMutex();
 	_player_position_mutex = xSemaphoreCreateMutex();
 	_ball_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
@@ -474,7 +516,8 @@ int main(void)
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
 	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
 	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
-	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	//xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	
 	
 	// Start the display handler timer
