@@ -60,7 +60,7 @@
 	 }
  }
 
- void *init_game(uint8_t *p){
+ void *init_game(uint16_t *p){
 	 screen_buffer = p;
 	 display_title();
 	 vTaskDelay(2000);

@@ -29,6 +29,7 @@ static SemaphoreHandle_t _col_0_mutex = NULL;
 static SemaphoreHandle_t _col_13_mutex = NULL;
 static SemaphoreHandle_t _player_position_mutex = NULL;
 static SemaphoreHandle_t _ball_position_mutex = NULL;
+static TaskHandle_t local_player;
 
 static player_position = 4;
 static ball_position[2] = {7, 5};
@@ -158,12 +159,12 @@ void local_player_task(void *pvParameters)
 	
 }
 */
-/*
+
 void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
 	TickType_t lastWakeTime;
-	uint8_t pos;
+	uint8_t pos = 4;
 	void *(*loop)() = init_p_local(&_player_position_mutex, &pos, &col_value);
 
 	lastWakeTime = xTaskGetTickCount();
@@ -173,7 +174,7 @@ void local_player_task(void *pvParameters)
 	}
 	
 }
-*/
+
 void move_player2(uint8_t *position, uint8_t direction){
 	uint16_t mask = 5;
 	if (direction == 0){
@@ -471,10 +472,9 @@ int main(void)
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
 	xTaskCreate(game_task,(const char *)"game", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
-	//xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
+	//xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, local_player);
 	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	
 	
 	// Start the display handler timer
 	init_display_timer(handle_display);
