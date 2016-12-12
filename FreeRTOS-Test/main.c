@@ -15,6 +15,7 @@
 #include <semphr.h>
 
 #include "src/board/board.h"
+#include "protocol.h"
 
 #define task1_prio (tskIDLE_PRIORITY+4)
 #define task2_prio (tskIDLE_PRIORITY+3)
@@ -28,23 +29,15 @@ static SemaphoreHandle_t _player_position_mutex = NULL;
 static SemaphoreHandle_t _ball_position_mutex = NULL;
 
 static player_position = 4;
+static ball_position[2] = {7, 5};
 static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //display
 //uint16_t col_value[14] = {1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023, 1023};
 
 //uint16_t col_value[14] = {508, 288, 192, 16, 40, 16, 0, 60, 32, 28, 0, 18, 42, 60};
 static col_index = 0;
 
-typedef struct msg_byte_t{
-	uint8_t data;
-	struct msg_byte_t *next;
-}msg_byte_t;
-
-typedef struct msg{
-	uint8_t data[8];
-	uint8_t size;
-}msg_t;
-
-static msg_t *frame = NULL;
+static QueueHandle_t _frames_received = NULL;
+static SemaphoreHandle_t _isBallAtLeft = NULL;
 
 //-----------------------------------------
 void startup_task(void *pvParameters)
@@ -76,97 +69,34 @@ void startup_task(void *pvParameters)
 void serial_task(void *pvParameters){
 
 	(void) pvParameters;
-	
 	TickType_t lastWakeTime;
-	
-	uint8_t state = 0;
-	uint8_t data = 0;
-	const uint8_t flag = 0x61;
-	const uint8_t esc = 0xff;
-
-	msg_byte_t *last_byte = NULL;
-	uint8_t count = 0;
+	uint8_t byte = 0;
+	prot_StateFunc state = init_protocol(&_frames_received);
 
 	lastWakeTime = xTaskGetTickCount();
-	while (1)
-	{
-		while(xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0) ){
-			
-			switch (state){
-				case 0:
-					if (data == flag){
-						state = 1;
-					}
-					break;
-				case 1:
-					if (data == flag){
-
-						
-						//received_msg.data = (uint8_t *) malloc(sizeof(uint8_t)*count);
-						//uint8_t bytes[count];
-						msg_t received_msg;
-						received_msg.size = count;
-						for (uint8_t i = count; i > 0; --i)
-						{
-							received_msg.data[i-1] = last_byte->data;
-							last_byte = last_byte->next;
-						}
-
-						frame = &received_msg;
-						
-						count = 0;
-						state = 0;
-
-					}
-					else if (data == esc){
-						state = 2;
-					}
-					else{
-						msg_byte_t incoming = {data, last_byte};
-						last_byte = &incoming;
-						++count;
-					}
-					break;
-				case 2:
-					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0);
-					//save to payload
-					break;
-				default:
-					state = 0;
-					break;
-			}
-			/*
-			if (data == 0x61)
-			{
-				xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0);
-				if (data == 0x41){
-					xQueueReceive(_x_com_received_chars_queue, &(data),(TickType_t) 0);
-				}
-				com_send_bytes(&(data), 1);  //com_send_bytes
-				if (data == 0x62){
-					col_value[0] >>= 1;
-				}
-			}*/
+	while(1){
+		while(xQueueReceive(_x_com_received_chars_queue,&byte, (TickType_t) 0)){
+			state = (prot_StateFunc)(*state)(byte);
 		}
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 20);
 	}
 
 }
 
+
 void echo_task(void *pvParameters)
 {
 	(void) pvParameters;
 
-	uint8_t data;
+	frame_t buff;
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while(1)
 	{
-		if (frame != NULL)
+		if (xQueueReceive(_frames_received, &buff, (TickType_t) 0))
 		{
 		//com_send_bytes((uint8_t *) "hello", 5);
-		com_send_bytes(frame->data,frame->size);
-		frame = NULL;
+		com_send_bytes(buff.bytes,buff.size);
 		}
 		
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
@@ -191,15 +121,24 @@ void move_player(uint8_t *position, uint8_t direction){
 void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
-	
+	uint8_t ball[2];
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
+		xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
+		ball[0] = ball_position[0];
+		ball[1] = ball_position[1];
+		xSemaphoreGive(_ball_position_mutex);
 		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
 		if (!(PINC & (1<<6)) && player_position > 0){
 			xSemaphoreTake(_player_position_mutex, (TickType_t) 10);
-			--player_position;
+			if (ball[0] == 0 && (player_position-1) == ball[1]){
+				//maybe bounce?
+			}
+			else{
+				--player_position;
+			}
 			xSemaphoreGive(_player_position_mutex);
 			move_player(&player_position, 0);
 		}
@@ -233,25 +172,24 @@ void external_player_task(void *pvParameters)
 {
 	(void) pvParameters;
 	uint8_t position = 4;
-
+	frame_t buff;
 	TickType_t lastWakeTime;
 	lastWakeTime = xTaskGetTickCount();
 	while (1)
 	{
 		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
-		if (frame == NULL)
+		if (xQueueReceive(_frames_received, &buff, (TickType_t) 1))
 		{
+			if (buff.bytes[0] == 'w' && position > 0){
+				--position;
+				move_player2(&position, 0);
+			}
+			else if (buff.bytes[0] == 's' && position < 8){
+				++position;
+				move_player2(&position, 1);
+			}
 		}
-		else if (frame->data[0] == 'w'){
-			--position;
-			move_player2(&position, 0);
-		}
-		else if (frame->data[0] == 's'){
-			++position;
-			move_player2(&position, 1);
-		}
-		frame = NULL;
-		//xSemaphoreGive(_player_position_mutex);
+
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
 	}
 	
@@ -331,6 +269,11 @@ void move_ball(uint8_t *current, uint8_t *next){
 	
 	current[0] = next[0];
 	current[1] = next[1];
+
+	xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
+	ball_position[0] =current[0];
+	ball_position[1] = current[1];
+	xSemaphoreGive(_ball_position_mutex);
 	
 	mask = 1 << current[1];
 	if (current[0] == 0){
@@ -421,11 +364,16 @@ void ball_task(void *pvParameters)
 		col_value[1] = 0;
 		col_value[0] = 48;	
 	TickType_t lastWakeTime;
-	uint8_t pos[2] = {7, 5};
+	uint8_t pos[2];
 	uint8_t direction = 0;
 	lastWakeTime = xTaskGetTickCount();
 	while(1)
 	{
+
+		xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
+		pos[0] = ball_position[0];
+		pos[1] = ball_position[1];
+		xSemaphoreGive(_ball_position_mutex);
 
 		uint8_t next[2] = {pos[0],pos[1]};
 		uint8_t is_bounced = 1;
@@ -435,7 +383,7 @@ void ball_task(void *pvParameters)
 			is_bounced = 0;
 			calc_next( &pos, &next, &direction);
 			
-			if (next[0] > 12){
+			if (next[0] > 13){
 				bounce(&direction, 1);
 			}
 			else if ( next[1] > 9){
@@ -503,6 +451,9 @@ int main(void)
 	PORTD &= ~_BV(PORTD6);
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
+	_frames_received = xQueueCreate( 2, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
+	_isBallAtLeft = xSemaphoreCreateBinary();
+
 	_col_0_mutex = xSemaphoreCreateMutex();
 	_col_13_mutex = xSemaphoreCreateMutex();
 	_player_position_mutex = xSemaphoreCreateMutex();
@@ -514,10 +465,10 @@ int main(void)
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
-	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
-	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
-	xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	//xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	//xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
+	//xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
+	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	
 	
 	// Start the display handler timer

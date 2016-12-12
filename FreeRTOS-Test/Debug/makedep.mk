@@ -2,7 +2,11 @@
 # Automatically-generated file. Do not edit or delete the file
 ################################################################################
 
+game.c
+
 main.c
+
+protocol.c
 
 src\board\board.c
 
