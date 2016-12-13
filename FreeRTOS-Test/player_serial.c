@@ -18,7 +18,7 @@
 
   void *p_serial(){
 
-	if (xQueueReceive(*queue, &data_frame, (TickType_t) 0)){
+	if (xQueueReceive(*queue, &data_frame, (TickType_t) 1)){
 			if (data_frame.bytes[0] == 0x77){
 			clr_p_s();
 			p_s_up();

@@ -26,7 +26,7 @@ void *game_idle();
 void *game_run();
 void *game_score();
 
-void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx);
+void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx, uint8_t *ps_pos_p, SemaphoreHandle_t *ps_mtx);
 
 
 #endif /* GAME_H_ */

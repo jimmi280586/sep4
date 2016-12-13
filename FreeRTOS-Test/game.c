@@ -13,10 +13,17 @@
  static SemaphoreHandle_t *pl_mutex;
  static uint8_t *pl_pos;
 
- static uint8_t local_pl_pos;
+ static SemaphoreHandle_t *ps_mutex;
+ static uint8_t *ps_pos;
+ static uint8_t local_ps_pos = 4;
+
+ static uint8_t local_pl_pos = 4;
  static uint8_t direction = 0;
  static uint8_t ball_curr_pos[] = {7,5};
  static uint8_t ball_next_pos[] = {0,0};
+
+ static uint16_t pl_score = 0;
+ static uint16_t ps_score = 0;
 
 
  void *game_run_entry(){
@@ -40,7 +47,7 @@
 
  void *game_idle_entry(){
 	clr_scr();
-	def_scr();
+	reset_game();
 	return game_idle;
  }
 
@@ -50,12 +57,14 @@
 
  void *game_score_entry(){
 	 while(xSemaphoreTake(*screen_mutex, (TickType_t) 1) != pdTRUE){
+		 //suspend the players
 		 //lalalala
 	 }
 	 clr_scr();
 	 ball_curr_pos[0] = 7;
 	 ball_curr_pos[1] = 5;
 	 direction = 0;
+	 disp_score();
 	 return game_score;
  }
 
@@ -68,9 +77,14 @@
 		calc_next();
 		if ( ball_next_pos[0] == 255)
 		{
+			++ps_score;
 			return game_score_entry;
 		}
-		else if (ball_next_pos[0] > 13 || ball_next_pos[1] > 9){
+		else if (ball_next_pos[0] == 14){
+			++pl_score;
+			return game_score_entry;
+		}
+		else if (ball_next_pos[1] > 9){
 			bounce();
 			is_bounced = 1;
 		}
@@ -82,6 +96,19 @@
 				xSemaphoreGive(*pl_mutex);
 			}
 			if ( local_pl_pos == ball_next_pos[1] || (local_pl_pos+1) == ball_next_pos[1])
+			{
+				bounce();
+				is_bounced = 1;
+			}
+		}
+		else if (ball_next_pos[0] == 13)
+		{
+			if (xSemaphoreTake(*ps_mutex, (TickType_t) 1) == pdTRUE)
+			{
+				local_ps_pos = *ps_pos;
+				xSemaphoreGive(*ps_mutex);
+			}
+			if ( local_ps_pos == ball_next_pos[1] || (local_ps_pos+1) == ball_next_pos[1])
 			{
 				bounce();
 				is_bounced = 1;
@@ -105,16 +132,30 @@
 	 }
  }
 
- void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx){
+ void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx, uint8_t *ps_pos_p, SemaphoreHandle_t *ps_mtx){
 	 screen_buffer = scr_buff;
 	 screen_mutex = scr_mtx;
 	 xSemaphoreTake(*screen_mutex, (TickType_t) 1);
 	 pl_pos = pl_pos_p;
 	 pl_mutex = pl_mtx;
+
+	 ps_pos = ps_pos_p;
+	 ps_mutex = ps_mtx;
 	 local_pl_pos = 4;
 	 display_title();
 	 vTaskDelay(2000);
 	 return game_idle_entry;
+ }
+
+ void reset_game(){
+	//dont mutex them, the other tasks should be suspended and maybe they took their mutex
+	local_pl_pos = *pl_pos;
+	local_ps_pos = *ps_pos;
+
+	clr_scr();
+	screen_buffer[0] = (3 << local_pl_pos);
+	screen_buffer[13] = (3 << local_ps_pos);
+	screen_buffer[7] = 32;
  }
 
  void display_title(){
@@ -151,21 +192,22 @@
 	 screen_buffer[0] = 0;
  }
 
- void def_scr(){
-	 screen_buffer[13] = 48;
-	 screen_buffer[12] = 0;
-	 screen_buffer[11] = 0;
-	 screen_buffer[10] = 0;
-	 screen_buffer[9] = 0;
-	 screen_buffer[8] = 0;
-	 screen_buffer[7] = 32;
-	 screen_buffer[6] = 0;
-	 screen_buffer[5] = 0;
-	 screen_buffer[4] = 0;
-	 screen_buffer[3] = 0;
-	 screen_buffer[2] = 0;
-	 screen_buffer[1] = 0;
-	 screen_buffer[0] = 48;
+ void disp_score(){
+	
+	clr_scr();
+	uint16_t mask = 0xFFFF;
+	mask <<= (10-pl_score);
+
+	screen_buffer[2] = mask;
+	screen_buffer[3] = mask;
+	screen_buffer[4] = mask;
+
+	mask = 0xFFFF;
+	mask <<= (10-ps_score);
+
+	screen_buffer[9] = mask;
+	screen_buffer[10] = mask;
+	screen_buffer[11] = mask;
  }
 
  void calc_next(){
