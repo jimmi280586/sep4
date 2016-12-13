@@ -13,7 +13,12 @@ public class SerialConnectionReader {
 	public void printMSG() {
 		try {
 			System.out.println("msg");
-			byte[] readBuffer = read();//somthing wrong
+			byte[] readBuffer = read();
+			if(readBuffer[0] == 6)
+				System.out.println("ANC");
+			if(readBuffer[0] == 15)
+				System.out.println("NANC");
+			else
 			System.out.println("  Recieved bytes: " + new String(readBuffer));
 		} catch (Exception e) {
 			System.out.println("Error in read");
@@ -21,6 +26,8 @@ public class SerialConnectionReader {
 		}
 
 	}
+
+
 
 	public byte[] read() throws InterruptedException {
 		byte[] readBuffer = new byte[readBufferSize];
@@ -38,6 +45,7 @@ public class SerialConnectionReader {
 
 		byte[] msg = new byte[numberOfBytes];
 		for (int i = 0; i < numberOfBytes; i++) {
+			System.out.println(readBuffer[i]);
 			msg[i] = readBuffer[i];
 		}
 

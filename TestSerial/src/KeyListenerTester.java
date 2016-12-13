@@ -12,6 +12,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.WindowConstants;
 
 import dk.thibaut.serial.SerialPort;
 
@@ -21,9 +22,14 @@ public class KeyListenerTester extends JFrame implements KeyListener {
     TextField text;
     
 	SerialConnection serialConnection;
+	SerialConnectionReader serialConnectionReader;
+	
 	
     public KeyListenerTester(String s) {
         super(s);
+        super.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        
+        
         JPanel p = new JPanel();
         
         label = new JLabel("Key Listener!");
@@ -33,13 +39,15 @@ public class KeyListenerTester extends JFrame implements KeyListener {
             
         add(p);
         addKeyListener(this);
-        setSize(200, 150);
+        setSize(300, 150);
         setVisible(true);
        
         List<String> a = SerialPort.getAvailablePortsNames(); 
         System.out.println(a.get(0));
         serialConnection = new SerialConnection(a.get(0));
-        SerialConnectionReader serialConnectionReader = serialConnection.getSerialConnectionReader();
+        serialConnectionReader = serialConnection.getSerialConnectionReader();
+        
+        serialConnectionReader.printMSG();
             
        
 		
@@ -64,10 +72,15 @@ public class KeyListenerTester extends JFrame implements KeyListener {
         if (e.getKeyCode() == KeyEvent.VK_UP) {
             System.out.println("up key pressed");
             serialConnection.write("awa".getBytes());
+            serialConnectionReader.printMSG();
+      
+    		
         }
         if (e.getKeyCode() == KeyEvent.VK_DOWN) {
            System.out.println("down key pressed");
             serialConnection.write("asa".getBytes());
+            serialConnectionReader.printMSG();
+      
         }
 
     }
