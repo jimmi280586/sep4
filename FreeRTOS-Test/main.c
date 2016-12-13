@@ -161,7 +161,7 @@ void game_task(void *pvParameters)
 
 	while(1){
 		state = (game_stateFunc)(*state)();
-		vTaskDelayUntil(&lastWakeTime, (TickType_t) 100);
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 140);
 	}
 }
 
