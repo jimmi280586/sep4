@@ -15,6 +15,6 @@
 #include <semphr.h>
 
 void *p_local();
-void *init_p_local(SemaphoreHandle_t *m, uint8_t *p, uint16_t s);
+void *init_p_local(SemaphoreHandle_t *scr_mtx,SemaphoreHandle_t *pl_mtx, uint8_t *p_pos, uint16_t *scr_buff);
 
 #endif /* PLAYER_LOCAL_H_ */

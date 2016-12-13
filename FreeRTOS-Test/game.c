@@ -6,18 +6,32 @@
  */ 
 
  #include "game.h"
+ #include <semphr.h>
 
  static uint16_t *screen_buffer;
+ static SemaphoreHandle_t *screen_mutex;
+ static SemaphoreHandle_t *pl_mutex;
+ static uint8_t *pl_pos;
+
+ static uint8_t local_pl_pos;
  static uint8_t direction = 0;
  static uint8_t ball_curr_pos[] = {7,5};
  static uint8_t ball_next_pos[] = {0,0};
+
+
+ void *game_run_entry(){
+	 
+	 
+	 xSemaphoreGive(*screen_mutex);
+	 return game_run;
+ }
 
  void *game_idle(){
 	 //wait for any button to cont.
 	 //joystick pins: PC0, PC1, PC6, PC7, PD3
 	 // PC mask 11000011 - 0xc3
 	 if (joy_PUSH ){
-		 return game_run;
+		 return game_run_entry;
 	 }
 	 else{
 		 return game_idle;
@@ -26,11 +40,23 @@
 
  void *game_idle_entry(){
 	clr_scr();
+	def_scr();
 	return game_idle;
  }
 
  void *game_idle_exit(){
 	return NULL;
+ }
+
+ void *game_score_entry(){
+	 while(xSemaphoreTake(*screen_mutex, (TickType_t) 1) != pdTRUE){
+		 //lalalala
+	 }
+	 clr_scr();
+	 ball_curr_pos[0] = 7;
+	 ball_curr_pos[1] = 5;
+	 direction = 0;
+	 return game_score;
  }
 
  void *game_run(){
@@ -40,19 +66,38 @@
 	while(is_bounced != 0){
 		is_bounced = 0;
 		calc_next();
-		if (ball_next_pos[0] > 13 || ball_next_pos[1] > 9){
+		if ( ball_next_pos[0] == 255)
+		{
+			return game_score_entry;
+		}
+		else if (ball_next_pos[0] > 13 || ball_next_pos[1] > 9){
 			bounce();
 			is_bounced = 1;
+		}
+		else if (ball_next_pos[0] == 0)
+		{
+			if (xSemaphoreTake(*pl_mutex, (TickType_t) 1) == pdTRUE)
+			{
+				local_pl_pos = *pl_pos;
+				xSemaphoreGive(*pl_mutex);
+			}
+			if ( local_pl_pos == ball_next_pos[1] || (local_pl_pos+1) == ball_next_pos[1])
+			{
+				bounce();
+				is_bounced = 1;
+			}
 		}
 		
 	}
 	refresh_ball();
-	 return game_run;
+	return game_run;
  }
 
  void *game_score() {
+	
 	 if (joy_PUSH)
 	 {
+		
 		 return game_idle_entry;
 	 }
 	 else{
@@ -60,8 +105,13 @@
 	 }
  }
 
- void *init_game(uint16_t *p){
-	 screen_buffer = p;
+ void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx){
+	 screen_buffer = scr_buff;
+	 screen_mutex = scr_mtx;
+	 xSemaphoreTake(*screen_mutex, (TickType_t) 1);
+	 pl_pos = pl_pos_p;
+	 pl_mutex = pl_mtx;
+	 local_pl_pos = 4;
 	 display_title();
 	 vTaskDelay(2000);
 	 return game_idle_entry;
@@ -99,6 +149,23 @@
 	 screen_buffer[2] = 0;
 	 screen_buffer[1] = 0;
 	 screen_buffer[0] = 0;
+ }
+
+ void def_scr(){
+	 screen_buffer[13] = 48;
+	 screen_buffer[12] = 0;
+	 screen_buffer[11] = 0;
+	 screen_buffer[10] = 0;
+	 screen_buffer[9] = 0;
+	 screen_buffer[8] = 0;
+	 screen_buffer[7] = 32;
+	 screen_buffer[6] = 0;
+	 screen_buffer[5] = 0;
+	 screen_buffer[4] = 0;
+	 screen_buffer[3] = 0;
+	 screen_buffer[2] = 0;
+	 screen_buffer[1] = 0;
+	 screen_buffer[0] = 48;
  }
 
  void calc_next(){
@@ -184,11 +251,15 @@
  }
 
  void refresh_ball(){
-	screen_buffer[ball_curr_pos[0]] &= !(1 << ball_curr_pos[1]);
-	//screen_buffer[ball_curr_pos[0]] = 0;
-	ball_curr_pos[0] = ball_next_pos[0];
-	ball_curr_pos[1] = ball_next_pos[1];
+	if (xSemaphoreTake(*screen_mutex, (TickType_t) 1) == pdTRUE)
+	{
+		screen_buffer[ball_curr_pos[0]] &= ~(1 << ball_curr_pos[1]);
+		//screen_buffer[ball_curr_pos[0]] = 0;
+		ball_curr_pos[0] = ball_next_pos[0];
+		ball_curr_pos[1] = ball_next_pos[1];
 
-	screen_buffer[ball_curr_pos[0]] |= (1 << ball_curr_pos[1]);
-	//screen_buffer[ball_curr_pos[0]] = 1023;
+		screen_buffer[ball_curr_pos[0]] |= (1 << ball_curr_pos[1]);
+		xSemaphoreGive(*screen_mutex);
+	}
+	
  }

@@ -10,7 +10,8 @@
 #define GAME_H_
 
 #include <FreeRTOS.h>
-#include <task.h>
+#include <semphr.h>
+
 
 #define joy_UP !(PINC & 0x40)
 #define joy_DOWN !(PINC & 0x01)
@@ -25,7 +26,7 @@ void *game_idle();
 void *game_run();
 void *game_score();
 
- void *init_game(uint16_t *p);
+void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx);
 
 
 #endif /* GAME_H_ */
