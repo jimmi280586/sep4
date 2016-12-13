@@ -6,10 +6,10 @@
  */ 
   #include "protocol.h"
 
-  #define prot_ESC 0xFF
-  #define prot_FLAG 0x61
+  #define prot_ESC 0x1b
+  #define prot_FLAG 0x10
   #define prot_ACK 0x06
-  #define prot_NACK 0x0F
+  #define prot_NACK 0x15
 
   static frame_t _frame;
   static QueueHandle_t *frames;
@@ -39,19 +39,19 @@
 		if (_frame.size > 0)
 		{
 			valid_frame();
-			return prot_idle_entry;
+			return prot_idle_entry();
 		} 
 		else
 		{
 			broken_frame();
-			return prot_idle_entry;
+			return prot_idle_entry();
 		}
 		
 	}
 	else if (_frame.size > 4)
 	{
 		broken_frame();
-		return prot_idle_entry;
+		return prot_idle_entry();
 	}
 	add_byte_to_frame(byte);
 	return prot_data;
@@ -61,7 +61,7 @@
 	  if (byte != prot_FLAG || byte != prot_ESC)
 	  {
 		  broken_frame();
-		  return prot_idle_entry;
+		  return prot_idle_entry();
 
 	  }
 	  else{

@@ -78,11 +78,11 @@
 		if ( ball_next_pos[0] == 255)
 		{
 			++ps_score;
-			return game_score_entry;
+			return game_score_entry();
 		}
 		else if (ball_next_pos[0] == 14){
 			++pl_score;
-			return game_score_entry;
+			return game_score_entry();
 		}
 		else if (ball_next_pos[1] > 9){
 			bounce();
@@ -125,7 +125,7 @@
 	 if (joy_PUSH)
 	 {
 		
-		 return game_idle_entry;
+		 return game_idle_entry();
 	 }
 	 else{
 		 return game_score;
@@ -144,7 +144,7 @@
 	 local_pl_pos = 4;
 	 display_title();
 	 vTaskDelay(2000);
-	 return game_idle_entry;
+	 return game_idle_entry();
  }
 
  void reset_game(){
