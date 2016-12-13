@@ -8,6 +8,8 @@
 
   #define prot_ESC 0xFF
   #define prot_FLAG 0x61
+  #define prot_ACK 0x06
+  #define prot_NACK 0x0F
 
   static frame_t _frame;
   static QueueHandle_t *frames;
@@ -32,22 +34,35 @@
 	{
 		return prot_esc;
 	}
-	else if (byte == prot_FLAG)
+	else if (byte == prot_FLAG )
 	{
-		finish_frame();
+		if (_frame.size > 0)
+		{
+			valid_frame();
+			return prot_idle_entry;
+		} 
+		else
+		{
+			broken_frame();
+			return prot_idle_entry;
+		}
+		
+	}
+	else if (_frame.size > 4)
+	{
+		broken_frame();
 		return prot_idle_entry;
 	}
-	else
-	{
-		add_byte_to_frame(byte);
-		return prot_data;
-	}
+	add_byte_to_frame(byte);
+	return prot_data;
   }
 
   void *prot_esc(uint8_t byte) {
-	  if (0)
+	  if (byte != prot_FLAG || byte != prot_ESC)
 	  {
+		  broken_frame();
 		  return prot_idle_entry;
+
 	  }
 	  else{
 		  add_byte_to_frame(byte);
@@ -64,8 +79,13 @@
 	++(_frame.size);
 }
 
-void finish_frame(){
+void valid_frame(){
+	com_send_bytes(prot_ACK, 1);
 	xQueueSend(*frames, &_frame, (TickType_t) 1);
+}
+
+void broken_frame(){
+	com_send_bytes(prot_NACK, 1);
 }
 
 void *init_protocol(QueueHandle_t *q){

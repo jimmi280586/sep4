@@ -155,7 +155,7 @@ void game_task(void *pvParameters)
 {
 	(void) pvParameters;
 	TickType_t lastWakeTime;
-	game_stateFunc state = init_game(&col_value, &_screen_mutex, &l_player, &_local_p_mutex);
+	game_stateFunc state = init_game(&col_value, &_screen_mutex, &l_player, &_local_p_mutex, &s_player, &_serial_p_mutex);
 
 	lastWakeTime = xTaskGetTickCount();
 
@@ -212,7 +212,7 @@ int main(void)
 	PORTD &= ~_BV(PORTD6);
 
 	_x_com_received_chars_queue = xQueueCreate( _COM_RX_QUEUE_LENGTH, ( unsigned portBASE_TYPE ) sizeof( uint8_t ) );
-	_frames_received = xQueueCreate( 10, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
+	_frames_received = xQueueCreate( 1, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
 	//_isBallAtLeft = xSemaphoreCreateBinary();
 
 	_screen_mutex = xSemaphoreCreateMutex();
