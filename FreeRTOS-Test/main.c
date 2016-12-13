@@ -17,6 +17,7 @@
 #include "src/board/board.h"
 #include "protocol.h"
 #include "game.h"
+#include "player_local.h"
 
 #define task1_prio (tskIDLE_PRIORITY+4)
 #define task2_prio (tskIDLE_PRIORITY+3)
@@ -24,10 +25,11 @@
 
 static const uint8_t _COM_RX_QUEUE_LENGTH = 30;
 static QueueHandle_t _x_com_received_chars_queue = NULL;
-static SemaphoreHandle_t _col_0_mutex = NULL;
-static SemaphoreHandle_t _col_13_mutex = NULL;
+
+static SemaphoreHandle_t _screen_mutex = NULL;
 static SemaphoreHandle_t _player_position_mutex = NULL;
-static SemaphoreHandle_t _ball_position_mutex = NULL;
+
+//static SemaphoreHandle_t _ball_position_mutex = NULL;
 
 static player_position = 4;
 static ball_position[2] = {7, 5};
@@ -38,9 +40,9 @@ static uint16_t col_value[14] = {48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48}; //
 static col_index = 0;
 
 static QueueHandle_t _frames_received = NULL;
-static SemaphoreHandle_t _isBallAtLeft = NULL;
 
 //-----------------------------------------
+/*
 void startup_task(void *pvParameters)
 {
 	// The parameters are not used
@@ -66,6 +68,7 @@ void startup_task(void *pvParameters)
 		// Maybe something usefiúll could be done her :)
 	}
 }
+*/
 
 void serial_task(void *pvParameters){
 
@@ -105,56 +108,21 @@ void echo_task(void *pvParameters)
 	
 }
 
-void move_player(uint8_t *position, uint8_t direction){
-	uint16_t mask = 5;
-	if (direction == 0){
-		mask <<= *position;
-	}
-	else{
-		mask <<= *position-1;
-	}
-	
-	xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
-	col_value[0] ^= mask;
-	xSemaphoreGive(_col_0_mutex);
-}
-
 void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
-	uint8_t ball[2];
 	TickType_t lastWakeTime;
+
+	void *(*loop)() = init_p_local(&_screen_mutex, &_player_position_mutex, &player_position, &col_value);
+
 	lastWakeTime = xTaskGetTickCount();
-	while (1)
-	{
-		xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
-		ball[0] = ball_position[0];
-		ball[1] = ball_position[1];
-		xSemaphoreGive(_ball_position_mutex);
-		//xSemaphoreTake(_player_position_mutex, (TickType_t) 2);
-		if (!(PINC & (1<<6)) && player_position > 0){
-			xSemaphoreTake(_player_position_mutex, (TickType_t) 10);
-			if (ball[0] == 0 && (player_position-1) == ball[1]){
-				//maybe bounce?
-			}
-			else{
-				--player_position;
-			}
-			xSemaphoreGive(_player_position_mutex);
-			move_player(&player_position, 0);
-		}
-		else if (!(PINC & (1<<0)) && player_position < 8){
-			xSemaphoreTake(_player_position_mutex, (TickType_t) 10);
-			++player_position;
-			xSemaphoreGive(_player_position_mutex);
-			move_player(&player_position, 1);
-		}
-		//xSemaphoreGive(_player_position_mutex);
-		vTaskDelayUntil(&lastWakeTime, (TickType_t) 40);
-	}	
+	while(1){
+		loop = (*loop)();
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 60);
+	}
 	
 }
-
+/*
 void move_player2(uint8_t *position, uint8_t direction){
 	uint16_t mask = 5;
 	if (direction == 0){
@@ -195,197 +163,18 @@ void external_player_task(void *pvParameters)
 	}
 	
 }
-
-/*
-void bounce(uint8_t *direction){
-	uint8_t r = rand()%3;
-	
-	r += 3;
-	r += *direction;
-	r %= 8;
-	*direction = r;
-}
 */
-/*
-void bounce(uint8_t *direction, uint8_t side){
 
-	if ( (*(direction)%2)==0){
-		uint8_t r = rand()%3;
-		r += 3;
-		r += *direction;
-		r %= 8;
-		*direction = r;
-	}
-	else{
-		if (side == 0){
-			switch (*direction){
-				case 1:
-				*direction = 3;
-				break;
-				case 3:
-				*direction = 1;
-				break;
-				case 5:
-				*direction = 7;
-				break;
-				case 7:
-				*direction = 5;
-				break;
-			}
-		}
-		else{
-			switch (*direction){
-				case 1:
-				*direction = 7;
-				break;
-				case 3:
-				*direction = 5;
-				break;
-				case 5:
-				*direction = 3;
-				break;
-				case 7:
-				*direction = 1;
-				break;
-			}
-		}
-	}
-	
-	
-}
-
-
-void move_ball(uint8_t *current, uint8_t *next){
-	uint16_t mask = 1<< current[1];
-	mask = ~mask;
-
-	if (current[0] == 0){
-		xSemaphoreTake(_col_0_mutex, (TickType_t) 10);
-		col_value[current[0]] &= mask;
-		xSemaphoreGive(_col_0_mutex);
-	}
-	else{
-		col_value[current[0]] &= mask;
-	}
-	//col_value[current[0]] &= mask;
-	
-	current[0] = next[0];
-	current[1] = next[1];
-
-	xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
-	ball_position[0] =current[0];
-	ball_position[1] = current[1];
-	xSemaphoreGive(_ball_position_mutex);
-	
-	mask = 1 << current[1];
-	if (current[0] == 0){
-		xSemaphoreTake(_col_0_mutex, (TickType_t) 1);
-		col_value[current[0]] |= mask;
-		xSemaphoreGive(_col_0_mutex);
-	}
-	else if (current[0] == 13)
-	{
-		xSemaphoreTake(_col_13_mutex, (TickType_t) 1);
-		col_value[current[0]] |= mask;
-		xSemaphoreGive(_col_13_mutex);
-	}
-	else{
-		col_value[current[0]] |= mask;
-	}
-
-	
-}
-
-void calc_next(uint8_t *current, uint8_t *next, uint8_t *direction){
-	
-	switch (*direction)
-	{
-		case 0:
-		--next[1];
-		break;
-		case 1:
-		++next[0];
-		--next[1];
-		break;
-		case 2:
-		++next[0];
-		break;
-		case 3:
-		++next[0];
-		++next[1];
-		break;
-		case 4:
-		++next[1];
-		break;
-		case 5:
-		--next[0];
-		++next[1];
-		break;
-		case 6:
-		--next[0];
-		break;
-		case 7:
-		--next[0];
-		--next[1];
-		break;
-	}
-	
-}
-
-void ball_task(void *pvParameters)
+void game_task(void *pvParameters)
 {
 	(void) pvParameters;
 	TickType_t lastWakeTime;
-	uint8_t pos[2];
-	uint8_t direction = 0;
-	lastWakeTime = xTaskGetTickCount();
-	while(1)
-	{
-
-		xSemaphoreTake(_ball_position_mutex, (TickType_t) 1);
-		pos[0] = ball_position[0];
-		pos[1] = ball_position[1];
-		xSemaphoreGive(_ball_position_mutex);
-
-		uint8_t next[2] = {pos[0],pos[1]};
-		uint8_t is_bounced = 1;
-
-		while (is_bounced != 0)
-		{	
-			is_bounced = 0;
-			calc_next( &pos, &next, &direction);
-			
-			if (next[0] > 13){
-				bounce(&direction, 1);
-			}
-			else if ( next[1] > 9){
-				bounce(&direction, 0);
-			}
-			else if (next[0] == 0 && (next[1] == player_position || next[1] == (player_position+1))){
-				bounce(&direction, 1);
-			}
-			else{
-				move_ball(pos, next);
-				is_bounced = 0;
-			}
-		}
-		
-		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
-	}
-	
-}
-*/
-
-void ball_task(void *pvParameters)
-{
-	(void) pvParameters;
-	TickType_t lastWakeTime;
-	game_stateFunc state = init_game(&col_value);
+	game_stateFunc state = init_game(&col_value, &_screen_mutex, &player_position, &_player_position_mutex);
 
 	lastWakeTime = xTaskGetTickCount();
 
 	while(1){
-		state = (prot_StateFunc)(*state)();
+		state = (game_stateFunc)(*state)();
 		vTaskDelayUntil(&lastWakeTime, (TickType_t) 80);
 	}
 }
@@ -440,9 +229,9 @@ int main(void)
 	_frames_received = xQueueCreate( 2, ( unsigned portBASE_TYPE ) sizeof( frame_t ) );
 	//_isBallAtLeft = xSemaphoreCreateBinary();
 
-	//_col_0_mutex = xSemaphoreCreateMutex();
+	_screen_mutex = xSemaphoreCreateMutex();
 	//_col_13_mutex = xSemaphoreCreateMutex();
-	//_player_position_mutex = xSemaphoreCreateMutex();
+	_player_position_mutex = xSemaphoreCreateMutex();
 	//_ball_position_mutex = xSemaphoreCreateMutex();
 	init_com(_x_com_received_chars_queue);
 	
@@ -451,11 +240,10 @@ int main(void)
 	//Create task to blink gpio
 	//xTaskCreate(startup_task, (const char *)"Startup", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(serial_task,(const char *)"serial", configMINIMAL_STACK_SIZE, (void *)NULL, task1_prio, NULL);
-	xTaskCreate(ball_task,(const char *)"ball", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
-	//xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
+	xTaskCreate(game_task,(const char *)"game", configMINIMAL_STACK_SIZE, (void *)NULL, task2_prio, NULL);
+	xTaskCreate(local_player_task,(const char *)"lplayer", configMINIMAL_STACK_SIZE, (void *)NULL, task3_prio, NULL);
 	//xTaskCreate(external_player_task,(const char *)"eplayer", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
 	xTaskCreate(echo_task,(const char *)"echo", configMINIMAL_STACK_SIZE, (void *)NULL, tskIDLE_PRIORITY, NULL);
-	
 	
 	// Start the display handler timer
 	init_display_timer(handle_display);
