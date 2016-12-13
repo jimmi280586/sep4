@@ -48,7 +48,7 @@
  }
 
  void p_up(){
-	if (xSemaphoreTake(*pl_mutex, (TickType_t) 1) == pdTRUE)
+	if (xSemaphoreTake(*pl_mutex, (TickType_t) 2) == pdTRUE)
 	{
 		if (*pl_pos > 0){
 			--(*pl_pos);
@@ -61,7 +61,7 @@
  }
 
  void p_down(){
-	 if (xSemaphoreTake(*pl_mutex, (TickType_t) 1) == pdTRUE)
+	 if (xSemaphoreTake(*pl_mutex, (TickType_t) 2) == pdTRUE)
 	 {
 		 if (*pl_pos < 8){
 			 ++(*pl_pos);
