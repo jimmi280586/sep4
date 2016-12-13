@@ -207,6 +207,12 @@
     <Compile Include="player_local.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="player_serial.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="player_serial.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="protocol.c">
       <SubType>compile</SubType>
     </Compile>
