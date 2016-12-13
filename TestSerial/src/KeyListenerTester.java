@@ -1,29 +1,48 @@
 
+import java.awt.Button;
+import java.awt.Dimension;
+import java.awt.TextField;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.List;
+
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import dk.thibaut.serial.SerialPort;
+
 public class KeyListenerTester extends JFrame implements KeyListener {
 
     JLabel label;
+    TextField text;
+    
 	SerialConnection serialConnection;
 	
     public KeyListenerTester(String s) {
         super(s);
         JPanel p = new JPanel();
+        
         label = new JLabel("Key Listener!");
+    
+       
         p.add(label);
+            
         add(p);
         addKeyListener(this);
-        setSize(200, 100);
+        setSize(200, 150);
         setVisible(true);
-		//System.out.println("Befor connection");
-		//Finde the right COM port in devices
-		serialConnection = new SerialConnection("COM3");
-		//System.out.println("Befor reader connection");
-		SerialConnectionReader serialConnectionReader = serialConnection.getSerialConnectionReader();
+       
+        List<String> a = SerialPort.getAvailablePortsNames(); 
+        System.out.println(a.get(0));
+        serialConnection = new SerialConnection(a.get(0));
+        SerialConnectionReader serialConnectionReader = serialConnection.getSerialConnectionReader();
+            
+       
+		
 
     }
 
@@ -43,11 +62,11 @@ public class KeyListenerTester extends JFrame implements KeyListener {
     public void keyPressed(KeyEvent e) {
 
         if (e.getKeyCode() == KeyEvent.VK_UP) {
-           // System.out.println("up key pressed");
+            System.out.println("up key pressed");
             serialConnection.write("awa".getBytes());
         }
         if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-          //  System.out.println("down key pressed");
+           System.out.println("down key pressed");
             serialConnection.write("asa".getBytes());
         }
 
