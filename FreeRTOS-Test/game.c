@@ -25,40 +25,35 @@
  static uint16_t pl_score = 0;
  static uint16_t ps_score = 0;
 
-
+ //run_entry func
  void *game_run_entry(){
-	 
-	 
+	//release screen mutex to set players in run state
 	 xSemaphoreGive(*screen_mutex);
 	 return game_run;
  }
 
+ //idle state func
  void *game_idle(){
 	 //wait for any button to cont.
-	 //joystick pins: PC0, PC1, PC6, PC7, PD3
-	 // PC mask 11000011 - 0xc3
 	 if (joy_PUSH ){
-		 return game_run_entry;
+		 return game_run_entry();
 	 }
 	 else{
 		 return game_idle;
 	 }
  }
-
+ //idle_entry function
  void *game_idle_entry(){
 	clr_scr();
 	reset_game();
 	return game_idle;
  }
 
- void *game_idle_exit(){
-	return NULL;
- }
-
+ //score_entry func
  void *game_score_entry(){
 	 while(xSemaphoreTake(*screen_mutex, (TickType_t) 1) != pdTRUE){
-		 //suspend the players
-		 //lalalala
+		 //take the screen mutex until run_entry gives it back
+		 //thus sending the players into idle with their timeout
 	 }
 	 clr_scr();
 	 ball_curr_pos[0] = 7;
@@ -66,6 +61,19 @@
 	 direction = 0;
 	 disp_score();
 	 return game_score;
+ }
+
+ //score state func
+ void *game_score() {
+	 
+	 if (joy_PUSH)
+	 {
+		 
+		 return game_idle_entry();
+	 }
+	 else{
+		 return game_score;
+	 }
  }
 
  void *game_run(){
@@ -120,18 +128,6 @@
 	return game_run;
  }
 
- void *game_score() {
-	
-	 if (joy_PUSH)
-	 {
-		
-		 return game_idle_entry();
-	 }
-	 else{
-		 return game_score;
-	 }
- }
-
  void *init_game(uint16_t *scr_buff, SemaphoreHandle_t *scr_mtx, uint8_t *pl_pos_p, SemaphoreHandle_t *pl_mtx, uint8_t *ps_pos_p, SemaphoreHandle_t *ps_mtx){
 	 screen_buffer = scr_buff;
 	 screen_mutex = scr_mtx;
@@ -146,6 +142,12 @@
 	 vTaskDelay(2000);
 	 return game_idle_entry();
  }
+
+ /*
+ void *game_idle_exit(){
+	return NULL;
+ }
+ */
 
  void reset_game(){
 	//dont mutex them, the other tasks should be suspended and maybe they took their mutex

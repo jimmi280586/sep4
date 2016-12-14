@@ -81,11 +81,11 @@ namespace PongMania
 
                 while (!is_acked && tries < 5)
                 {
-                    sPort.Write(frame, 0, frame.Length);
+                    sPort.Write(frame, 0, frame.Length);    //writes to the port, using the default timeout
                     Console.WriteLine("frame sent");
-                    byte buff = (byte) sPort.ReadByte();
+                    byte buff = (byte) sPort.ReadByte();    //reading acknowledgment
                     Console.WriteLine(buff);
-                    if (buff == ack)
+                    if (buff == ack)                        //checking the ack to decide what to do next
                     {
                         is_acked = true;
                     }
