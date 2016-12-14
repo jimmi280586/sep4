@@ -63,7 +63,7 @@ void startup_task(void *pvParameters)
 	
 	while(1)
 	{
-		// Maybe something usefiúll could be done her :)
+		// Maybe something usefull could be done her :)
 	}
 }
 */
@@ -71,6 +71,12 @@ void startup_task(void *pvParameters)
 void serial_task(void *pvParameters){
 
 	(void) pvParameters;
+
+	#if (configUSE_APPLICATION_TASK_TAG == 1)
+	// Set task no to be used for tracing with R2R-Network
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 4 );
+	#endif
+	
 	TickType_t lastWakeTime;
 	uint8_t byte = 0;
 	prot_StateFunc state = init_protocol(&_frames_received);
@@ -109,6 +115,12 @@ void echo_task(void *pvParameters)
 void local_player_task(void *pvParameters)
 {
 	(void) pvParameters;
+
+	#if (configUSE_APPLICATION_TASK_TAG == 1)
+	// Set task no to be used for tracing with R2R-Network
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 2 );
+	#endif
+
 	TickType_t lastWakeTime;
 
 	void *(*loop)() = init_p_local(&_screen_mutex, &_local_p_mutex, &l_player, &col_value);
@@ -138,6 +150,11 @@ void move_player2(uint8_t *position, uint8_t direction){
 void serial_player_task(void *pvParameters)
 {
 	(void) pvParameters;
+
+	#if (configUSE_APPLICATION_TASK_TAG == 1)
+	// Set task no to be used for tracing with R2R-Network
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 1 );
+	#endif
 	
 	void *(*loop)() = init_p_serial(&_frames_received, &_screen_mutex, &_serial_p_mutex, &s_player, &col_value);
 
@@ -154,6 +171,12 @@ void serial_player_task(void *pvParameters)
 void game_task(void *pvParameters)
 {
 	(void) pvParameters;
+
+	#if (configUSE_APPLICATION_TASK_TAG == 1)
+	// Set task no to be used for tracing with R2R-Network
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 3 );
+	#endif
+
 	TickType_t lastWakeTime;
 	game_stateFunc state = init_game(&col_value, &_screen_mutex, &l_player, &_local_p_mutex, &s_player, &_serial_p_mutex);
 

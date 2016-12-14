@@ -106,8 +106,8 @@ void init_board(void) {
 	 Are enabled in FreeRTOSConfig.h
 	 **********************************************************************/
 	void switch_in(uint8_t task_no) {
-		// PORTB &= 0b11000011;
-		// PORTB |= task_no << 2;
+		 PORTB &= 0b11000011;
+		 PORTB |= task_no << 2;
 	}
 	/**********************************************************************//**
 	 @ingroup trace
@@ -117,7 +117,7 @@ void init_board(void) {
 	 Are enabled in FreeRTOSConfig.h
 	 **********************************************************************/
 	void switch_out(uint8_t task_no) {
-		// PORTB &= 0b11000011;
+		 PORTB &= 0b11000011;
 	}
 #endif
 
