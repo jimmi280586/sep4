@@ -3,4 +3,4 @@ priority 3 time = 73,13 micro seconds
 priority 2 time = 116,5 micro seconds
 priority 1 time = 121,9 micro seconds
 system time for all four tasks = 421,8 micro seconds
-idle system time = 18,69 micro seconds
+idle system time = 18,69 milli seconds
