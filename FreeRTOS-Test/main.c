@@ -79,10 +79,13 @@ void serial_task(void *pvParameters){
 	
 	TickType_t lastWakeTime;
 	uint8_t byte = 0;
-	prot_StateFunc state = init_protocol(&_frames_received);
+
+	//init the state machine and return with starting state func
+	prot_StateFunc state = init_protocol(&_frames_received);	
 
 	lastWakeTime = xTaskGetTickCount();
 	while(1){
+		//loop until the queue is not empty
 		while(xQueueReceive(_x_com_received_chars_queue,&byte, (TickType_t) 0)){
 			state = (prot_StateFunc)(*state)(byte);
 		}
@@ -191,6 +194,7 @@ void game_task(void *pvParameters)
 //-----------------------------------------
 void handle_display(void)
 {
+	//set SER to HIGHT
 	if (col_index == 0){
 		PORTD |= _BV(PORTD2);
 	}
@@ -199,19 +203,20 @@ void handle_display(void)
 	PORTD |= _BV(PORTD5);
 	PORTD &= ~_BV(PORTD5);
 
+	// Set SER to 0
+	PORTD &= ~_BV(PORTD2);
+
 	// one RCK pulse
 	PORTD |= _BV(PORTD4);
 	PORTD &= ~_BV(PORTD4);
 
+	//Pixel0..07
 	PORTA = ~(col_value[col_index] & 0xFF);
-	
+	//Pixel8..9
 	// Manipulate only with PB0 and PB1
 	PORTB |= 0x03;
 	PORTB &= ~((col_value[col_index] >> 8) & 0x03);
-
-	// Set SER to 0
-	PORTD &= ~_BV(PORTD2);
-
+	//jump to next column
 	++col_index;
 	if (col_index > 13){
 		col_index = 0;
