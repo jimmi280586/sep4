@@ -1,0 +1,22 @@
+Missing in the reports
+Project report:
+	
+	
+			
+	testing
+		picoscope pictures
+		computation time
+		System timeline (piano rolle)
+	
+	conclution
+	
+
+Process report
+		how did we start
+		why did we do like we did
+		new group member
+		lack of theory (task diagrams and unit testing)
+		how well did we work 
+		what could we have done better
+		what have we learned in this project
+		
