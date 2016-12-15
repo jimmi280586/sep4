@@ -74,9 +74,10 @@ void serial_task(void *pvParameters){
 
 	#if (configUSE_APPLICATION_TASK_TAG == 1)
 	// Set task no to be used for tracing with R2R-Network
-	vTaskSetApplicationTaskTag( NULL, ( void * ) 4 );
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 12 );
 	#endif
-	
+	//initial delay
+	vTaskDelay((TickType_t) 4);
 	TickType_t lastWakeTime;
 	uint8_t byte = 0;
 
@@ -89,7 +90,7 @@ void serial_task(void *pvParameters){
 		while(xQueueReceive(_x_com_received_chars_queue,&byte, (TickType_t) 0)){
 			state = (prot_StateFunc)(*state)(byte);
 		}
-		vTaskDelayUntil(&lastWakeTime, (TickType_t) 20);
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 2);
 	}
 
 }
@@ -121,9 +122,10 @@ void local_player_task(void *pvParameters)
 
 	#if (configUSE_APPLICATION_TASK_TAG == 1)
 	// Set task no to be used for tracing with R2R-Network
-	vTaskSetApplicationTaskTag( NULL, ( void * ) 2 );
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 6 );
 	#endif
-
+	//initial delay
+	vTaskDelay((TickType_t) 3);
 	TickType_t lastWakeTime;
 
 	void *(*loop)() = init_p_local(&_screen_mutex, &_local_p_mutex, &l_player, &col_value);
@@ -156,9 +158,11 @@ void serial_player_task(void *pvParameters)
 
 	#if (configUSE_APPLICATION_TASK_TAG == 1)
 	// Set task no to be used for tracing with R2R-Network
-	vTaskSetApplicationTaskTag( NULL, ( void * ) 1 );
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 3 );
 	#endif
 	
+	//initial delay
+	vTaskDelay((TickType_t) 4);
 	void *(*loop)() = init_p_serial(&_frames_received, &_screen_mutex, &_serial_p_mutex, &s_player, &col_value);
 
 	TickType_t lastWakeTime;
@@ -177,9 +181,10 @@ void game_task(void *pvParameters)
 
 	#if (configUSE_APPLICATION_TASK_TAG == 1)
 	// Set task no to be used for tracing with R2R-Network
-	vTaskSetApplicationTaskTag( NULL, ( void * ) 3 );
+	vTaskSetApplicationTaskTag( NULL, ( void * ) 9 );
 	#endif
-
+	//initial delay
+	vTaskDelay((TickType_t) 2);
 	TickType_t lastWakeTime;
 	game_stateFunc state = init_game(&col_value, &_screen_mutex, &l_player, &_local_p_mutex, &s_player, &_serial_p_mutex);
 
@@ -187,7 +192,7 @@ void game_task(void *pvParameters)
 
 	while(1){
 		state = (game_stateFunc)(*state)();
-		vTaskDelayUntil(&lastWakeTime, (TickType_t) 140);
+		vTaskDelayUntil(&lastWakeTime, (TickType_t) 120);
 	}
 }
 
