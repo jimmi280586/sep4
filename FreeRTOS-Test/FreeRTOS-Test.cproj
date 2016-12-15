@@ -38,8 +38,8 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.stk600</avrtool>
-    <avrtoolserialnumber>0048395C6F9B</avrtoolserialnumber>
+    <avrtool>com.atmel.avrdbg.tool.atmelice</avrtool>
+    <avrtoolserialnumber>J41800025057</avrtoolserialnumber>
     <avrdeviceexpectedsignature>0x1E9511</avrdeviceexpectedsignature>
     <com_atmel_avrdbg_tool_simulator>
       <ToolOptions>
@@ -56,7 +56,7 @@
     <com_atmel_avrdbg_tool_atmelice>
       <ToolOptions>
         <InterfaceProperties>
-          <JtagDbgClock>0</JtagDbgClock>
+          <JtagDbgClock>800000</JtagDbgClock>
           <JtagEnableExtResetOnStartSession>false</JtagEnableExtResetOnStartSession>
           <JtagInChain>false</JtagInChain>
           <JtagDevicesBefore>0</JtagDevicesBefore>
@@ -74,7 +74,7 @@
       <ToolNumber>J41800025057</ToolNumber>
       <ToolName>Atmel-ICE</ToolName>
     </com_atmel_avrdbg_tool_atmelice>
-    <avrtoolinterfaceclock>0</avrtoolinterfaceclock>
+    <avrtoolinterfaceclock>800000</avrtoolinterfaceclock>
     <custom>
       <ToolOptions xmlns="">
         <InterfaceProperties>
@@ -108,6 +108,27 @@
       <ToolNumber>0048395C6F9B</ToolNumber>
       <ToolName>STK600</ToolName>
     </com_atmel_avrdbg_tool_stk600>
+    <com_atmel_avrdbg_tool_edbgc>
+      <ToolOptions>
+        <InterfaceProperties>
+          <JtagDbgClock>220000</JtagDbgClock>
+          <JtagEnableExtResetOnStartSession>true</JtagEnableExtResetOnStartSession>
+          <JtagInChain>false</JtagInChain>
+          <JtagDevicesBefore>0</JtagDevicesBefore>
+          <JtagDevicesAfter>0</JtagDevicesAfter>
+          <JtagInstrBitsBefore>0</JtagInstrBitsBefore>
+          <JtagInstrBitsAfter>0</JtagInstrBitsAfter>
+          <JtagSelectedDeviceIndexInChain>
+          </JtagSelectedDeviceIndexInChain>
+          <JtagDaisyChainDevices>
+          </JtagDaisyChainDevices>
+        </InterfaceProperties>
+        <InterfaceName>JTAG</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.edbgc</ToolType>
+      <ToolNumber>Atmel-ICE CMSIS-DAP</ToolNumber>
+      <ToolName>EDBG</ToolName>
+    </com_atmel_avrdbg_tool_edbgc>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>

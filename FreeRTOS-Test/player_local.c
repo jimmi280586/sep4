@@ -15,7 +15,7 @@
  static BaseType_t is_blocked = 0;
 
   void *p_idle(){
-	  if (xSemaphoreTake(*screen_mutex, (TickType_t) 1))
+	  if (xSemaphoreTake(*screen_mutex, (TickType_t) 0))
 	  {
 		  xSemaphoreGive(*screen_mutex);
 		  is_blocked = 0;

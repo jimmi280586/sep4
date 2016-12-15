@@ -10,7 +10,7 @@ namespace PongMania
     {
         static void Main(string[] args)
         {
-            SerialProtocol sp = new SerialProtocol("COM3", 115200, System.IO.Ports.Parity.None, 8, System.IO.Ports.StopBits.One);
+            SerialProtocol sp = new SerialProtocol("COM5", 115200, System.IO.Ports.Parity.None, 8, System.IO.Ports.StopBits.One);
 
             while (true)
             {
